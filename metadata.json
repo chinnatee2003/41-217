@@ -1,0 +1,6 @@
+{
+  "name": "ฮุก 31 ระบบ ว.8 กู้ชีพ-กู้ภัย | Hook 31 EMS Pho Klang",
+  "description": "ระบบบันทึกรายงาน ว.8 กู้ชีพ-กู้ภัย ฮุก 31 จุดข้าง สภ.โพธิ์กลาง ศูนย์วิทยุ นครราชสีมา ออกแบบพร้อมคัดลอกส่งเข้า LINE กลุ่มกู้ภัยได้ทันที",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

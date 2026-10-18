@@ -1,0 +1,156 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --font-tactical: 'JetBrains Mono', monospace;
+    --font-headline: 'Space Grotesk', 'Sarabun', sans-serif;
+    --font-body: 'Work Sans', 'Sarabun', sans-serif;
+  }
+
+  /* Mode 1: Red Tactical (Default Field / Night Mode) */
+  body.theme-red, body {
+    --bg-canvas: #141313;
+    --bg-surface: #141313;
+    --bg-surface-low: #1c1b1b;
+    --bg-surface-mid: #211f1f;
+    --bg-surface-high: #2b2a29;
+    --bg-surface-highest: #363434;
+    --bg-surface-bright: #3a3939;
+    --bg-surface-lowest: #0f0e0e;
+    --text-primary: #e6e1e1;
+    --text-muted: #e4beba;
+    --accent-red: #ff5451;
+    --accent-crimson: #ffb3ad;
+    --accent-amber: #ffb95f;
+    --accent-cyan: #4cd7f6;
+    --accent-green: #06C755;
+    --border-subtle: #3a2e2d;
+    --border-card: #2e2423;
+  }
+
+  /* Mode 2: Dark HQ (Station Dispatch / Command Post) */
+  body.theme-hq {
+    --bg-canvas: #090e17;
+    --bg-surface: #0c1322;
+    --bg-surface-low: #111a2e;
+    --bg-surface-mid: #16223b;
+    --bg-surface-high: #1d2c4d;
+    --bg-surface-highest: #25375f;
+    --bg-surface-bright: #2d4373;
+    --bg-surface-lowest: #070b13;
+    --text-primary: #f1f5f9;
+    --text-muted: #94a3b8;
+    --accent-red: #f43f5e;
+    --accent-crimson: #fda4af;
+    --accent-amber: #fbbf24;
+    --accent-cyan: #38bdf8;
+    --accent-green: #10b981;
+    --border-subtle: #243554;
+    --border-card: #1c2a44;
+  }
+
+  /* Mode 3: High Contrast OLED (Direct Sunlight & Emergency Glare) */
+  body.theme-contrast {
+    --bg-canvas: #000000;
+    --bg-surface: #000000;
+    --bg-surface-low: #0a0a0a;
+    --bg-surface-mid: #141414;
+    --bg-surface-high: #202020;
+    --bg-surface-highest: #2c2c2c;
+    --bg-surface-bright: #3d3d3d;
+    --bg-surface-lowest: #000000;
+    --text-primary: #ffffff;
+    --text-muted: #e0e0e0;
+    --accent-red: #ff2222;
+    --accent-crimson: #ff8888;
+    --accent-amber: #ffcc00;
+    --accent-cyan: #00e5ff;
+    --accent-green: #00e676;
+    --border-subtle: #ffffff;
+    --border-card: #666666;
+  }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background-color: var(--bg-canvas);
+    color: var(--text-primary);
+    font-family: var(--font-body);
+  }
+
+  body {
+    overscroll-behavior: none;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #141313;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #363434;
+    border-radius: 4px;
+  }
+}
+
+.font-label-tactical {
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: 0.02em;
+}
+
+.font-headline-md {
+  font-family: 'Space Grotesk', 'Sarabun', sans-serif;
+}
+
+.font-body-md, .font-body-sm, .font-body-lg {
+  font-family: 'Work Sans', 'Sarabun', sans-serif;
+}
+
+/* Material Symbols alignment helper */
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  vertical-align: middle;
+  line-height: 1;
+}
+
+/* Tactical glowing pulse */
+@keyframes tactical-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+.animate-tactical-pulse {
+  animation: tactical-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Print styling for official EMS Run Sheet */
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+  header, footer, nav, .no-print, button {
+    display: none !important;
+  }
+  .print-only {
+    display: block !important;
+  }
+  .print-area {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  pre {
+    color: #000000 !important;
+    border: 1px solid #ccc !important;
+    padding: 12px !important;
+    white-space: pre-wrap !important;
+  }
+}
