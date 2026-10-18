@@ -11,6 +11,22 @@ export interface VitalSigns {
   dtx?: string;    // e.g. "110 mg/dL"
 }
 
+export interface ThaiIdCardData {
+  nationalId?: string;
+  title?: string;
+  firstName?: string;
+  lastName?: string;
+  fullName: string;
+  gender: string;
+  genderCount: string;
+  birthDate?: string;
+  age: string;
+  address: string;
+  photoUrl?: string;
+  confidence?: string;
+  readMethod?: 'camera_ai' | 'smart_card';
+}
+
 export interface IncidentReport {
   id: string;
   station: string;

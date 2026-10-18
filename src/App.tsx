@@ -8,8 +8,9 @@ import { PwaGuideView } from './components/PwaGuideView';
 import { ShareModal } from './components/ShareModal';
 import { ResetConfirmModal } from './components/ResetConfirmModal';
 import { PrintRunSheetModal } from './components/PrintRunSheetModal';
+import { IdCardScannerModal } from './components/IdCardScannerModal';
 import { Footer } from './components/Footer';
-import { IncidentReport, ShiftStats, TabType, ThemeMode } from './types';
+import { IncidentReport, ShiftStats, TabType, ThemeMode, ThaiIdCardData } from './types';
 import { INITIAL_REPORT, SAMPLE_CASES } from './data/initialData';
 import { getLiveTimeString, getTodayThaiDate } from './utils/formatters';
 
@@ -35,6 +36,7 @@ export default function App() {
   const [resetModalOpen, setResetModalOpen] = useState(false);
   const [printModalOpen, setPrintModalOpen] = useState(false);
   const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [idScannerOpen, setIdScannerOpen] = useState(false);
 
   // Toast
   const [toast, setToast] = useState<{
@@ -222,6 +224,24 @@ export default function App() {
     }, 350);
   };
 
+  // Open ID Card Scanner Modal
+  const handleOpenIdScanner = (_tab?: 'camera' | 'card_reader') => {
+    setIdScannerOpen(true);
+  };
+
+  // Apply extracted Thai ID card data directly to PART 03 in report
+  const handleApplyIdData = (idData: ThaiIdCardData) => {
+    setReport((prev) => ({
+      ...prev,
+      genderCount: idData.genderCount,
+      patientName: idData.fullName,
+      patientAge: idData.age,
+      patientAddress: idData.address,
+    }));
+    // Ensure PART 03 is open to show the extracted values
+    setOpenSections((prev) => ({ ...prev, sec3: true }));
+  };
+
   return (
     <div className="min-h-screen bg-[#141313] text-[#e6e1e1] flex flex-col font-sans">
       {/* Top Fixed Header */}
@@ -255,6 +275,7 @@ export default function App() {
                     openSections={openSections}
                     onToggleSection={handleToggleSection}
                     onShowToast={showToast}
+                    onOpenIdScanner={handleOpenIdScanner}
                   />
                 </div>
 
@@ -332,6 +353,14 @@ export default function App() {
       <ShareModal
         isOpen={shareModalOpen}
         onClose={() => setShareModalOpen(false)}
+        onShowToast={showToast}
+      />
+
+      {/* Thai National ID Card Scanner / Smart Card Modal */}
+      <IdCardScannerModal
+        isOpen={idScannerOpen}
+        onClose={() => setIdScannerOpen(false)}
+        onApplyData={handleApplyIdData}
         onShowToast={showToast}
       />
 
