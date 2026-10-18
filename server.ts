@@ -48,32 +48,37 @@ app.post('/api/scan-thai-id', async (req, res) => {
     // Strip data URL prefix if present
     const cleanBase64 = imageBase64.replace(/^data:image\/[a-zA-Z0-9+.-]+;base64,/, '');
 
+    // Use gemini-2.5-flash for reliable multimodal OCR and document reading
     const response = await ai.models.generateContent({
-      model: 'gemini-3.8-flash',
-      contents: {
-        parts: [
-          {
-            inlineData: {
-              mimeType: mimeType.startsWith('image/') ? mimeType : 'image/jpeg',
-              data: cleanBase64,
-            },
+      model: 'gemini-2.5-flash',
+      contents: [
+        {
+          inlineData: {
+            mimeType: mimeType && mimeType.startsWith('image/') ? mimeType : 'image/jpeg',
+            data: cleanBase64,
           },
-          {
-            text: `You are an expert optical character recognition (OCR) and document extraction model specialized in Thai National Identification Cards (บัตรประจำตัวประชาชนไทย) for emergency medical rescue services (EMS / ฮุก 31).
-Carefully inspect the Thai National ID card image and extract:
-1. Identification number (เลขประจำตัวประชาชน 13 หลัก)
-2. Thai Name with prefix (คำนำหน้า เช่น นาย/นาง/นางสาว/เด็กชาย/เด็กหญิง, ชื่อตัว, นามสกุล)
-3. Full Name (คำนำหน้า + ชื่อ + นามสกุล)
-4. Gender: 'ชาย' or 'หญิง'
-5. Gender count string formatted for Thai EMS radio reports: 'ชาย 1 ราย' or 'หญิง 1 ราย'
-6. Birth Date in Thai (e.g., '14 ม.ค. 2510')
-7. Calculated Age in Thai years string (e.g., '59 ปี')
-8. Address (ที่อยู่ตามบัตรประชาชน แบบละเอียดครบถ้วน ทั้งบ้านเลขที่ หมู่ ซอย ถนน ตำบล อำเภอ จังหวัด)
+        },
+        {
+          text: `You are an expert OCR specialist in Thai National Identification Cards (บัตรประจำตัวประชาชนไทย) for Thai Emergency Medical Services (ฮุก 31 กู้ชีพ).
+Carefully read and transcribe the EXACT text printed on the provided Thai National ID Card image.
 
-If any field is blurry or not legible, provide the best guess or empty string. Always return structured JSON strictly following the schema.`,
-          },
-        ],
-      },
+Guidelines:
+1. "เลขประจำตัวประชาชน" (13 digits): Usually at top right (e.g. 1 3099 00841 23 4). Format as 1-3099-00841-23-4.
+2. "ชื่อตัวและชื่อสกุล" (Thai Name): Note that on Thai ID cards:
+   - First line has title + first name (e.g. "นาย ธนากร" or "นางสาว วิภาดา")
+   - Second line has last name (e.g. "บุญรอด" or "รุ่งเรือง")
+   - You MUST combine both to produce the complete fullName: e.g. "นายธนากร บุญรอด"
+3. "เกิดวันที่" (Date of birth): e.g. "15 พ.ค. 2531" or "8 ต.ค. 2540".
+4. "อายุ" (Age): Calculate exact age using the current Buddhist year 2569 (CE 2026).
+   Formula: 2569 - (พ.ศ.เกิด). For example, if born in 2531, age is 38 ปี. If born in 2540, age is 29 ปี. Return e.g. "38 ปี".
+5. "เพศ" (Gender): "ชาย" if title is นาย/เด็กชาย, "หญิง" if title is นาง/นางสาว/เด็กหญิง.
+6. "genderCount": Format as "ชาย 1 ราย" or "หญิง 1 ราย" (or "เด็ก 1 ราย" if child).
+7. "ที่อยู่" (Address): Look at lower-left of the card under "ที่อยู่". Transcribe the complete address lines: บ้านเลขที่ หมู่ ซอย ถนน ตำบล อำเภอ จังหวัด (e.g. "99/4 ม.5 ต.หัวทะเล อ.เมืองนครราชสีมา จ.นครราชสีมา").
+8. "rawText": A short string of the main Thai text detected on the card.
+
+Be extremely precise. Transcribe the real text from the image without hallucinating or inventing names. Return valid JSON.`,
+        },
+      ],
       config: {
         responseMimeType: 'application/json',
         responseSchema: {
@@ -81,11 +86,11 @@ If any field is blurry or not legible, provide the best guess or empty string. A
           properties: {
             nationalId: {
               type: Type.STRING,
-              description: '13-digit Thai National ID number',
+              description: '13-digit Thai National ID number formatted as X-XXXX-XXXXX-XX-X',
             },
             title: {
               type: Type.STRING,
-              description: 'Prefix title in Thai: นาย, นาง, นางสาว, etc.',
+              description: 'Prefix title in Thai (นาย, นาง, นางสาว, etc.)',
             },
             firstName: {
               type: Type.STRING,
@@ -97,7 +102,7 @@ If any field is blurry or not legible, provide the best guess or empty string. A
             },
             fullName: {
               type: Type.STRING,
-              description: 'Full name in Thai with title',
+              description: 'Full name in Thai with title (เช่น นายสมชาย แสนสุข)',
             },
             gender: {
               type: Type.STRING,
@@ -109,22 +114,26 @@ If any field is blurry or not legible, provide the best guess or empty string. A
             },
             birthDate: {
               type: Type.STRING,
-              description: 'Date of birth in Thai',
+              description: 'Date of birth in Thai, e.g. 15 พ.ค. 2531',
             },
             age: {
               type: Type.STRING,
-              description: 'Calculated age string, e.g. 59 ปี',
+              description: 'Calculated age in years, e.g. 38 ปี',
             },
             address: {
               type: Type.STRING,
-              description: 'Full address according to the ID card',
+              description: 'Complete Thai address from the card',
+            },
+            rawText: {
+              type: Type.STRING,
+              description: 'Raw text lines extracted from card',
             },
             confidence: {
               type: Type.STRING,
-              description: 'Confidence level: high, medium, low',
+              description: 'high, medium, or low',
             },
           },
-          required: ['fullName', 'genderCount', 'age', 'address'],
+          required: ['fullName', 'genderCount', 'address'],
         },
       },
     });
@@ -134,7 +143,52 @@ If any field is blurry or not legible, provide the best guess or empty string. A
       throw new Error('ไม่ได้รับข้อมูลการตอบกลับจาก AI Model');
     }
 
-    const parsedData = JSON.parse(textOutput);
+    let parsedData: any;
+    try {
+      parsedData = JSON.parse(textOutput);
+    } catch {
+      // If direct JSON parse fails, try extracting from code fence
+      const match = textOutput.match(/\{[\s\S]*\}/);
+      if (match) {
+        parsedData = JSON.parse(match[0]);
+      } else {
+        throw new Error('ไม่สามารถแปลงผลลัพธ์เป็น JSON ได้');
+      }
+    }
+
+    // Server-side post-processing and sanity checks
+    const currentBE = 2569; // Current Buddhist Era for 2026
+
+    // Ensure full name is clean
+    if (!parsedData.fullName && (parsedData.firstName || parsedData.lastName)) {
+      parsedData.fullName = `${parsedData.title || ''} ${parsedData.firstName || ''} ${parsedData.lastName || ''}`.trim();
+    }
+
+    // Auto-calculate age if missing or incorrect
+    if (!parsedData.age || parsedData.age === '0 ปี' || parsedData.age === '') {
+      if (parsedData.birthDate) {
+        const yearMatch = parsedData.birthDate.match(/25\d{2}/) || parsedData.birthDate.match(/19\d{2}|20\d{2}/);
+        if (yearMatch) {
+          const yr = parseInt(yearMatch[0], 10);
+          if (yr >= 2400 && yr <= currentBE) {
+            parsedData.age = `${currentBE - yr} ปี`;
+          } else if (yr >= 1900 && yr <= 2026) {
+            parsedData.age = `${2026 - yr} ปี`;
+          }
+        }
+      }
+    }
+
+    // Auto-fix gender and genderCount
+    const nameStr = (parsedData.fullName || '') + (parsedData.title || '');
+    if (nameStr.includes('นาง') || nameStr.includes('หญิง') || nameStr.includes('น.ส.') || parsedData.gender === 'หญิง') {
+      parsedData.gender = 'หญิง';
+      parsedData.genderCount = nameStr.includes('เด็กหญิง') || nameStr.includes('ด.ญ.') ? 'เด็ก 1 ราย' : 'หญิง 1 ราย';
+    } else {
+      parsedData.gender = 'ชาย';
+      parsedData.genderCount = nameStr.includes('เด็กชาย') || nameStr.includes('ด.ช.') ? 'เด็ก 1 ราย' : 'ชาย 1 ราย';
+    }
+
     return res.json({
       success: true,
       data: parsedData,

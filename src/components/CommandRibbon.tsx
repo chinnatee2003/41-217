@@ -51,24 +51,25 @@ export const CommandRibbon: React.FC<CommandRibbonProps> = ({
 
         {/* Action Operations: Collapse / Expand All & Reset Form */}
         <div className="flex items-center gap-2 flex-wrap xl:justify-end">
-          <div className="flex items-center bg-[#211f1f] rounded-lg p-0.5 border border-[#362e2d] shadow-sm">
+          <div className="flex items-center bg-[#211f1f] rounded-lg p-1 border border-[#362e2d] shadow-sm gap-1">
             <button
               onClick={() => onToggleAllSections(false)}
-              className="h-8 md:h-9 px-2.5 rounded text-[#e4beba] hover:text-[#e6e1e1] hover:bg-[#2b2a29] transition-colors font-label-tactical text-[11px] flex items-center gap-1"
+              className="h-8 md:h-9 px-3 rounded text-[#e4beba] hover:text-[#e6e1e1] hover:bg-[#2b2a29] transition-colors font-label-tactical text-xs font-semibold flex items-center gap-1.5"
               title="ซ่อนรายละเอียดเพื่อดูภาพรวม"
               type="button"
             >
-              <span className="material-symbols-outlined text-[15px]">unfold_less</span>
-              <span>ซ่อน/พับทุกหัวข้อ</span>
+              <span className="material-symbols-outlined text-[16px] text-amber-400">unfold_less</span>
+              <span>พับปิดทุกหัวข้อ</span>
             </button>
+            <span className="text-[#362e2d]">|</span>
             <button
               onClick={() => onToggleAllSections(true)}
-              className="h-8 md:h-9 px-2.5 rounded text-[#e4beba] hover:text-[#e6e1e1] hover:bg-[#2b2a29] transition-colors font-label-tactical text-[11px] flex items-center gap-1"
+              className="h-8 md:h-9 px-3 rounded text-[#e4beba] hover:text-[#e6e1e1] hover:bg-[#2b2a29] transition-colors font-label-tactical text-xs font-semibold flex items-center gap-1.5"
               title="กางออกทั้งหมด"
               type="button"
             >
-              <span className="material-symbols-outlined text-[15px]">unfold_more</span>
-              <span>ขยายทุกหัวข้อ</span>
+              <span className="material-symbols-outlined text-[16px] text-[#4cd7f6]">unfold_more</span>
+              <span>ขยายเปิดทุกหัวข้อ</span>
             </button>
           </div>
 

@@ -7,75 +7,11 @@
     --font-body: 'Work Sans', 'Sarabun', sans-serif;
   }
 
-  /* Mode 1: Red Tactical (Default Field / Night Mode) */
-  body.theme-red, body {
-    --bg-canvas: #141313;
-    --bg-surface: #141313;
-    --bg-surface-low: #1c1b1b;
-    --bg-surface-mid: #211f1f;
-    --bg-surface-high: #2b2a29;
-    --bg-surface-highest: #363434;
-    --bg-surface-bright: #3a3939;
-    --bg-surface-lowest: #0f0e0e;
-    --text-primary: #e6e1e1;
-    --text-muted: #e4beba;
-    --accent-red: #ff5451;
-    --accent-crimson: #ffb3ad;
-    --accent-amber: #ffb95f;
-    --accent-cyan: #4cd7f6;
-    --accent-green: #06C755;
-    --border-subtle: #3a2e2d;
-    --border-card: #2e2423;
-  }
-
-  /* Mode 2: Dark HQ (Station Dispatch / Command Post) */
-  body.theme-hq {
-    --bg-canvas: #090e17;
-    --bg-surface: #0c1322;
-    --bg-surface-low: #111a2e;
-    --bg-surface-mid: #16223b;
-    --bg-surface-high: #1d2c4d;
-    --bg-surface-highest: #25375f;
-    --bg-surface-bright: #2d4373;
-    --bg-surface-lowest: #070b13;
-    --text-primary: #f1f5f9;
-    --text-muted: #94a3b8;
-    --accent-red: #f43f5e;
-    --accent-crimson: #fda4af;
-    --accent-amber: #fbbf24;
-    --accent-cyan: #38bdf8;
-    --accent-green: #10b981;
-    --border-subtle: #243554;
-    --border-card: #1c2a44;
-  }
-
-  /* Mode 3: High Contrast OLED (Direct Sunlight & Emergency Glare) */
-  body.theme-contrast {
-    --bg-canvas: #000000;
-    --bg-surface: #000000;
-    --bg-surface-low: #0a0a0a;
-    --bg-surface-mid: #141414;
-    --bg-surface-high: #202020;
-    --bg-surface-highest: #2c2c2c;
-    --bg-surface-bright: #3d3d3d;
-    --bg-surface-lowest: #000000;
-    --text-primary: #ffffff;
-    --text-muted: #e0e0e0;
-    --accent-red: #ff2222;
-    --accent-crimson: #ff8888;
-    --accent-amber: #ffcc00;
-    --accent-cyan: #00e5ff;
-    --accent-green: #00e676;
-    --border-subtle: #ffffff;
-    --border-card: #666666;
-  }
-
   html, body {
     margin: 0;
     padding: 0;
-    background-color: var(--bg-canvas);
-    color: var(--text-primary);
     font-family: var(--font-body);
+    transition: background-color 0.2s ease, color 0.2s ease;
   }
 
   body {
@@ -86,13 +22,259 @@
     width: 6px;
     height: 6px;
   }
-  ::-webkit-scrollbar-track {
-    background: #141313;
-  }
-  ::-webkit-scrollbar-thumb {
-    background: #363434;
-    border-radius: 4px;
-  }
+}
+
+/* ---------------------------------------------------- */
+/* THEME 1: DAYLIGHT MODE (โหมดกลางวัน สว่าง ชัดเจน สบายตา) */
+/* ---------------------------------------------------- */
+body.theme-day {
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
+}
+
+body.theme-day header {
+  background-color: rgba(255, 255, 255, 0.97) !important;
+  border-bottom: 1px solid #cbd5e1 !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08) !important;
+}
+
+body.theme-day main {
+  background-color: #f1f5f9 !important;
+}
+
+/* Day Mode Container & Surface Overrides using attribute selectors */
+body.theme-day [class*="bg-[#141313]"],
+body.theme-day [class*="bg-[#0f0e0e]"] {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+body.theme-day [class*="bg-[#1c1b1b]"],
+body.theme-day .accordion-item,
+body.theme-day .card-tactical {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06) !important;
+  color: #0f172a !important;
+}
+
+body.theme-day [class*="bg-[#211f1f]"] {
+  background-color: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+}
+
+body.theme-day [class*="bg-[#2b2a29]"] {
+  background-color: #e2e8f0 !important;
+  border-color: #cbd5e1 !important;
+  color: #1e293b !important;
+}
+
+body.theme-day [class*="bg-[#363434]"] {
+  background-color: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+body.theme-day [class*="bg-[#3a3939]"] {
+  background-color: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+/* Day Mode Typography */
+body.theme-day [class*="text-[#e6e1e1]"],
+body.theme-day h1,
+body.theme-day h2,
+body.theme-day h3,
+body.theme-day h4 {
+  color: #0f172a !important;
+}
+
+body.theme-day [class*="text-[#e4beba]"] {
+  color: #475569 !important;
+}
+
+body.theme-day [class*="text-[#ffb3ad]"] {
+  color: #dc2626 !important;
+}
+
+body.theme-day [class*="text-[#ffb95f]"] {
+  color: #b45309 !important;
+}
+
+body.theme-day [class*="text-[#4cd7f6]"] {
+  color: #0284c7 !important;
+}
+
+/* Day Mode Borders */
+body.theme-day [class*="border-[#2e2423]"],
+body.theme-day [class*="border-[#3e3433]"],
+body.theme-day [class*="border-[#362e2d]"],
+body.theme-day [class*="border-[#443837]"] {
+  border-color: #cbd5e1 !important;
+}
+
+/* Day Mode Form Inputs */
+body.theme-day input,
+body.theme-day textarea,
+body.theme-day select {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+
+body.theme-day input::placeholder,
+body.theme-day textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
+body.theme-day input:focus,
+body.theme-day textarea:focus {
+  border-color: #dc2626 !important;
+  outline: none !important;
+}
+
+/* Day Mode LINE Chat Console Bubble */
+body.theme-day pre#line-preview-text,
+body.theme-day pre {
+  color: #0f172a !important;
+}
+
+/* Day Mode Modals */
+body.theme-day .modal-backdrop {
+  background-color: rgba(15, 23, 42, 0.7) !important;
+}
+
+body.theme-day footer {
+  background-color: #ffffff !important;
+  border-top: 1px solid #cbd5e1 !important;
+  color: #475569 !important;
+}
+
+/* ---------------------------------------------------- */
+/* THEME 2: DARK HQ (โหมดศูนย์วิทยุ HQ Night Slate) */
+/* ---------------------------------------------------- */
+body.theme-hq {
+  background-color: #0b1120 !important;
+  color: #f8fafc !important;
+}
+
+body.theme-hq header {
+  background-color: rgba(15, 23, 42, 0.95) !important;
+  border-color: #1e293b !important;
+}
+
+body.theme-hq main {
+  background-color: #0b1120 !important;
+}
+
+body.theme-hq [class*="bg-[#141313]"] {
+  background-color: #0b1120 !important;
+}
+
+body.theme-hq [class*="bg-[#1c1b1b]"] {
+  background-color: #0f172a !important;
+  border-color: #1e293b !important;
+}
+
+body.theme-hq [class*="bg-[#211f1f]"] {
+  background-color: #16223b !important;
+  border-color: #1e293b !important;
+}
+
+body.theme-hq [class*="bg-[#2b2a29]"] {
+  background-color: #1e293b !important;
+  border-color: #334155 !important;
+}
+
+body.theme-hq [class*="bg-[#363434]"] {
+  background-color: #243554 !important;
+  border-color: #334155 !important;
+}
+
+body.theme-hq [class*="bg-[#0f0e0e]"] {
+  background-color: #070d18 !important;
+  border-color: #1e293b !important;
+}
+
+body.theme-hq [class*="text-[#e6e1e1]"] {
+  color: #f8fafc !important;
+}
+
+body.theme-hq [class*="text-[#e4beba]"] {
+  color: #94a3b8 !important;
+}
+
+body.theme-hq [class*="border-[#2e2423]"],
+body.theme-hq [class*="border-[#3e3433]"],
+body.theme-hq [class*="border-[#362e2d]"],
+body.theme-hq [class*="border-[#443837]"] {
+  border-color: #1e293b !important;
+}
+
+body.theme-hq footer {
+  background-color: #070d18 !important;
+  border-color: #1e293b !important;
+}
+
+/* ---------------------------------------------------- */
+/* THEME 3: HIGH CONTRAST OLED (โหมดแดดจ้า/คอนทราสต์จัด) */
+/* ---------------------------------------------------- */
+body.theme-contrast {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+}
+
+body.theme-contrast header {
+  background-color: #000000 !important;
+  border-bottom: 2px solid #ffffff !important;
+}
+
+body.theme-contrast main {
+  background-color: #000000 !important;
+}
+
+body.theme-contrast [class*="bg-[#141313]"],
+body.theme-contrast [class*="bg-[#0f0e0e]"] {
+  background-color: #000000 !important;
+  border-color: #ffffff !important;
+}
+
+body.theme-contrast [class*="bg-[#1c1b1b]"] {
+  background-color: #0a0a0a !important;
+  border: 1.5px solid #ffffff !important;
+}
+
+body.theme-contrast [class*="bg-[#211f1f]"] {
+  background-color: #141414 !important;
+  border-bottom: 1px solid #ffffff !important;
+}
+
+body.theme-contrast [class*="bg-[#2b2a29]"],
+body.theme-contrast [class*="bg-[#363434]"] {
+  background-color: #1c1c1c !important;
+  border: 1px solid #ffffff !important;
+}
+
+body.theme-contrast [class*="text-[#e6e1e1]"] {
+  color: #ffffff !important;
+}
+
+body.theme-contrast [class*="text-[#e4beba]"] {
+  color: #e0e0e0 !important;
+}
+
+body.theme-contrast footer {
+  background-color: #000000 !important;
+  border-top: 2px solid #ffffff !important;
+}
+
+/* ---------------------------------------------------- */
+/* THEME 4: RED TACTICAL (โหมดแสงสีแดงประจำห้องโดยสาร) */
+/* ---------------------------------------------------- */
+body.theme-red, body {
+  background-color: #141313;
+  color: #e6e1e1;
 }
 
 .font-label-tactical {

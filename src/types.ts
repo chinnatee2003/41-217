@@ -1,4 +1,4 @@
-export type ThemeMode = 'red' | 'hq' | 'contrast';
+export type ThemeMode = 'red' | 'day' | 'hq' | 'contrast';
 
 export type TabType = 'report' | 'stats' | 'pwa' | 'share';
 

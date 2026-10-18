@@ -83,6 +83,76 @@ export const IncidentForm: React.FC<IncidentFormProps> = ({
 
   return (
     <div className="flex flex-col gap-4">
+      {/* SECTION MASTER CONTROL BAR: Quick collapse/expand controls */}
+      <div className="p-3 rounded-xl bg-[#211f1f] border border-[#2e2423] flex flex-wrap items-center justify-between gap-2.5 shadow-sm">
+        <div className="flex items-center gap-2">
+          <span className="material-symbols-outlined text-[#ffb3ad] text-[20px]">
+            tune
+          </span>
+          <span className="font-headline-md text-xs font-bold text-[#e6e1e1]">
+            ตัวเลือกปิด/เปิดหัวข้อ (Section Controls):
+          </span>
+        </div>
+
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <button
+            type="button"
+            onClick={() => onToggleSection('sec1')}
+            className={`px-2.5 py-1 rounded-lg text-xs font-headline-md font-bold transition-all flex items-center gap-1 border ${
+              openSections.sec1
+                ? 'bg-[#93000a] text-[#ffdad6] border-[#c0392b]'
+                : 'bg-[#2b2a29] text-[#e4beba] border-[#3e3433] hover:text-white'
+            }`}
+            title="คลิกเพื่อเปิด/ปิด PART 01"
+          >
+            <span>{openSections.sec1 ? '✕ ปิด' : '▼ เปิด'}</span>
+            <span>PART 01</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onToggleSection('sec2')}
+            className={`px-2.5 py-1 rounded-lg text-xs font-headline-md font-bold transition-all flex items-center gap-1 border ${
+              openSections.sec2
+                ? 'bg-[#93000a] text-[#ffdad6] border-[#c0392b]'
+                : 'bg-[#2b2a29] text-[#e4beba] border-[#3e3433] hover:text-white'
+            }`}
+            title="คลิกเพื่อเปิด/ปิด PART 02"
+          >
+            <span>{openSections.sec2 ? '✕ ปิด' : '▼ เปิด'}</span>
+            <span>PART 02</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onToggleSection('sec3')}
+            className={`px-2.5 py-1 rounded-lg text-xs font-headline-md font-bold transition-all flex items-center gap-1 border ${
+              openSections.sec3
+                ? 'bg-[#93000a] text-[#ffdad6] border-[#c0392b]'
+                : 'bg-[#2b2a29] text-[#e4beba] border-[#3e3433] hover:text-white'
+            }`}
+            title="คลิกเพื่อเปิด/ปิด PART 03"
+          >
+            <span>{openSections.sec3 ? '✕ ปิด' : '▼ เปิด'}</span>
+            <span>PART 03 (ผู้ป่วย)</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onToggleSection('sec4')}
+            className={`px-2.5 py-1 rounded-lg text-xs font-headline-md font-bold transition-all flex items-center gap-1 border ${
+              openSections.sec4
+                ? 'bg-[#93000a] text-[#ffdad6] border-[#c0392b]'
+                : 'bg-[#2b2a29] text-[#e4beba] border-[#3e3433] hover:text-white'
+            }`}
+            title="คลิกเพื่อเปิด/ปิด PART 04"
+          >
+            <span>{openSections.sec4 ? '✕ ปิด' : '▼ เปิด'}</span>
+            <span>PART 04</span>
+          </button>
+        </div>
+      </div>
+
       {/* SECTION 1: Station & Dispatch Timing */}
       <div className="accordion-item rounded-xl bg-[#1c1b1b] border border-[#2e2423] shadow-sm overflow-hidden transition-all duration-200">
         <div
@@ -102,16 +172,23 @@ export const IncidentForm: React.FC<IncidentFormProps> = ({
             </span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-[#e4beba] font-label-tactical text-[11px] hidden sm:inline">
-              {openSections.sec1 ? 'ย่อ' : 'ขยาย'}
-            </span>
-            <span
-              className={`material-symbols-outlined text-[#ffb3ad] text-[20px] transition-transform duration-200 ${
-                openSections.sec1 ? 'rotate-0' : 'rotate-180'
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleSection('sec1');
+              }}
+              className={`px-3 py-1.5 rounded-lg font-headline-md text-xs font-bold flex items-center gap-1.5 transition-all border shadow-sm ${
+                openSections.sec1
+                  ? 'bg-[#93000a] hover:bg-[#b91a24] text-[#ffdad6] border-[#c0392b]'
+                  : 'bg-[#ffb3ad] hover:bg-[#ff8885] text-[#5c0008] border-[#ffb3ad]'
               }`}
             >
-              expand_less
-            </span>
+              <span className="material-symbols-outlined text-[16px]">
+                {openSections.sec1 ? 'close' : 'expand_more'}
+              </span>
+              <span>{openSections.sec1 ? '✕ ปิดหัวข้อนี้' : '▼ เปิดหัวข้อนี้'}</span>
+            </button>
           </div>
         </div>
 
@@ -176,6 +253,34 @@ export const IncidentForm: React.FC<IncidentFormProps> = ({
                 </div>
               </div>
             </div>
+
+            {/* Bottom Quick Close Button for PART 01 */}
+            <div className="pt-2 border-t border-[#2e2423] flex items-center justify-between">
+              <span className="text-[11px] font-label-tactical text-[#e4beba]">
+                PART 01 เรียบร้อยแล้ว
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => onToggleSection('sec1')}
+                  className="h-8 px-3 rounded-lg bg-[#2b2a29] hover:bg-[#363434] text-[#e6e1e1] font-label-tactical text-[11px] font-semibold flex items-center gap-1 border border-[#3e3433] transition-colors"
+                >
+                  <span className="material-symbols-outlined text-[15px]">unfold_less</span>
+                  <span>พับปิดหัวข้อนี้</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onToggleSection('sec1');
+                    if (!openSections.sec2) onToggleSection('sec2');
+                  }}
+                  className="h-8 px-3 rounded-lg bg-[#ffb95f]/20 hover:bg-[#ffb95f] text-[#ffb95f] hover:text-[#472a00] font-label-tactical text-[11px] font-bold flex items-center gap-1 border border-[#ffb95f]/40 transition-colors"
+                >
+                  <span>ถัดไป PART 02</span>
+                  <span className="material-symbols-outlined text-[15px]">arrow_downward</span>
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>
@@ -199,16 +304,23 @@ export const IncidentForm: React.FC<IncidentFormProps> = ({
             </span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-[#e4beba] font-label-tactical text-[11px] hidden sm:inline">
-              {openSections.sec2 ? 'ย่อ' : 'ขยาย'}
-            </span>
-            <span
-              className={`material-symbols-outlined text-[#ffb95f] text-[20px] transition-transform duration-200 ${
-                openSections.sec2 ? 'rotate-0' : 'rotate-180'
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleSection('sec2');
+              }}
+              className={`px-3 py-1.5 rounded-lg font-headline-md text-xs font-bold flex items-center gap-1.5 transition-all border shadow-sm ${
+                openSections.sec2
+                  ? 'bg-[#93000a] hover:bg-[#b91a24] text-[#ffdad6] border-[#c0392b]'
+                  : 'bg-[#ffb95f] hover:bg-[#e09e3a] text-[#472a00] border-[#ffb95f]'
               }`}
             >
-              expand_less
-            </span>
+              <span className="material-symbols-outlined text-[16px]">
+                {openSections.sec2 ? 'close' : 'expand_more'}
+              </span>
+              <span>{openSections.sec2 ? '✕ ปิดหัวข้อนี้' : '▼ เปิดหัวข้อนี้'}</span>
+            </button>
           </div>
         </div>
 
@@ -339,6 +451,34 @@ export const IncidentForm: React.FC<IncidentFormProps> = ({
                 />
               </div>
             </div>
+
+            {/* Bottom Quick Close Button for PART 02 */}
+            <div className="pt-2 border-t border-[#2e2423] flex items-center justify-between">
+              <span className="text-[11px] font-label-tactical text-[#e4beba]">
+                PART 02 เรียบร้อยแล้ว
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => onToggleSection('sec2')}
+                  className="h-8 px-3 rounded-lg bg-[#2b2a29] hover:bg-[#363434] text-[#e6e1e1] font-label-tactical text-[11px] font-semibold flex items-center gap-1 border border-[#3e3433] transition-colors"
+                >
+                  <span className="material-symbols-outlined text-[15px]">unfold_less</span>
+                  <span>พับปิดหัวข้อนี้</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onToggleSection('sec2');
+                    if (!openSections.sec3) onToggleSection('sec3');
+                  }}
+                  className="h-8 px-3 rounded-lg bg-[#4cd7f6]/20 hover:bg-[#4cd7f6] text-[#4cd7f6] hover:text-[#003640] font-label-tactical text-[11px] font-bold flex items-center gap-1 border border-[#4cd7f6]/40 transition-colors"
+                >
+                  <span>ถัดไป PART 03</span>
+                  <span className="material-symbols-outlined text-[15px]">arrow_downward</span>
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>
@@ -362,16 +502,23 @@ export const IncidentForm: React.FC<IncidentFormProps> = ({
             </span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-[#e4beba] font-label-tactical text-[11px] hidden sm:inline">
-              {openSections.sec3 ? 'ย่อ' : 'ขยาย'}
-            </span>
-            <span
-              className={`material-symbols-outlined text-[#4cd7f6] text-[20px] transition-transform duration-200 ${
-                openSections.sec3 ? 'rotate-0' : 'rotate-180'
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleSection('sec3');
+              }}
+              className={`px-3 py-1.5 rounded-lg font-headline-md text-xs font-bold flex items-center gap-1.5 transition-all border shadow-sm ${
+                openSections.sec3
+                  ? 'bg-[#93000a] hover:bg-[#b91a24] text-[#ffdad6] border-[#c0392b]'
+                  : 'bg-[#4cd7f6] hover:bg-[#38bdf8] text-[#003640] border-[#4cd7f6]'
               }`}
             >
-              expand_less
-            </span>
+              <span className="material-symbols-outlined text-[16px]">
+                {openSections.sec3 ? 'close' : 'expand_more'}
+              </span>
+              <span>{openSections.sec3 ? '✕ ปิดหัวข้อนี้' : '▼ เปิดหัวข้อนี้'}</span>
+            </button>
           </div>
         </div>
 
@@ -588,6 +735,34 @@ export const IncidentForm: React.FC<IncidentFormProps> = ({
                 </div>
               )}
             </div>
+
+            {/* Bottom Quick Close Button for PART 03 */}
+            <div className="pt-2 border-t border-[#2e2423] flex items-center justify-between">
+              <span className="text-[11px] font-label-tactical text-[#e4beba]">
+                PART 03 เรียบร้อยแล้ว
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => onToggleSection('sec3')}
+                  className="h-8 px-3 rounded-lg bg-[#2b2a29] hover:bg-[#363434] text-[#e6e1e1] font-label-tactical text-[11px] font-semibold flex items-center gap-1 border border-[#3e3433] transition-colors"
+                >
+                  <span className="material-symbols-outlined text-[15px]">unfold_less</span>
+                  <span>พับปิดหัวข้อนี้</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onToggleSection('sec3');
+                    if (!openSections.sec4) onToggleSection('sec4');
+                  }}
+                  className="h-8 px-3 rounded-lg bg-[#ff5451]/20 hover:bg-[#ff5451] text-[#ffb3ad] hover:text-[#5c0008] font-label-tactical text-[11px] font-bold flex items-center gap-1 border border-[#ff5451]/40 transition-colors"
+                >
+                  <span>ถัดไป PART 04</span>
+                  <span className="material-symbols-outlined text-[15px]">arrow_downward</span>
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>
@@ -611,16 +786,23 @@ export const IncidentForm: React.FC<IncidentFormProps> = ({
             </span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-[#e4beba] font-label-tactical text-[11px] hidden sm:inline">
-              {openSections.sec4 ? 'ย่อ' : 'ขยาย'}
-            </span>
-            <span
-              className={`material-symbols-outlined text-[#ff5451] text-[20px] transition-transform duration-200 ${
-                openSections.sec4 ? 'rotate-0' : 'rotate-180'
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleSection('sec4');
+              }}
+              className={`px-3 py-1.5 rounded-lg font-headline-md text-xs font-bold flex items-center gap-1.5 transition-all border shadow-sm ${
+                openSections.sec4
+                  ? 'bg-[#93000a] hover:bg-[#b91a24] text-[#ffdad6] border-[#c0392b]'
+                  : 'bg-[#06C755] hover:bg-[#05b34c] text-white border-[#06C755]'
               }`}
             >
-              expand_less
-            </span>
+              <span className="material-symbols-outlined text-[16px]">
+                {openSections.sec4 ? 'close' : 'expand_more'}
+              </span>
+              <span>{openSections.sec4 ? '✕ ปิดหัวข้อนี้' : '▼ เปิดหัวข้อนี้'}</span>
+            </button>
           </div>
         </div>
 
@@ -682,6 +864,23 @@ export const IncidentForm: React.FC<IncidentFormProps> = ({
                   placeholder="ระบุการให้การช่วยเหลือเพิ่มเติม เช่น ให้ออกซิเจน Cannula 3 LPM หรือ ปฐมพยาบาลห้ามเลือด..."
                   rows={2}
                 />
+              </div>
+            </div>
+
+            {/* Bottom Quick Close Button for PART 04 */}
+            <div className="pt-2 border-t border-[#2e2423] flex items-center justify-between">
+              <span className="text-[11px] font-label-tactical text-[#e4beba]">
+                ครบทั้ง 4 ส่วนแล้ว
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => onToggleSection('sec4')}
+                  className="h-8 px-3 rounded-lg bg-[#2b2a29] hover:bg-[#363434] text-[#e6e1e1] font-label-tactical text-[11px] font-semibold flex items-center gap-1 border border-[#3e3433] transition-colors"
+                >
+                  <span className="material-symbols-outlined text-[15px]">unfold_less</span>
+                  <span>พับปิดหัวข้อ PART 04</span>
+                </button>
               </div>
             </div>
           </div>

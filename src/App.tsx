@@ -37,6 +37,7 @@ export default function App() {
   const [printModalOpen, setPrintModalOpen] = useState(false);
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [idScannerOpen, setIdScannerOpen] = useState(false);
+  const [scannerInitialTab, setScannerInitialTab] = useState<'camera' | 'card_reader' | 'manual'>('camera');
 
   // Toast
   const [toast, setToast] = useState<{
@@ -61,10 +62,34 @@ export default function App() {
     other: 0,
   };
 
-  // Switch HTML root class for themes
+  // Switch HTML root class for themes (Day vs Night)
   useEffect(() => {
     document.body.className = `theme-${theme}`;
+    if (theme === 'day') {
+      document.documentElement.classList.remove('dark');
+      document.documentElement.classList.add('light');
+    } else {
+      document.documentElement.classList.remove('light');
+      document.documentElement.classList.add('dark');
+    }
   }, [theme]);
+
+  const handleThemeChange = (newTheme: ThemeMode) => {
+    setTheme(newTheme);
+    const labels = {
+      day: 'โหมดกลางวัน (Day Mode ☀️)',
+      hq: 'โหมดศูนย์วิทยุ HQ (Night Slate 🌙)',
+      red: 'โหมดยุทธวิธีแสงสีแดง (Night Red 🔴)',
+      contrast: 'โหมดคอนทราสต์จัด (OLED ⚡)',
+    };
+    const desc = {
+      day: 'พื้นหลังสว่าง ชัดเจน สบายตาสำหรับเวลากลางวัน',
+      hq: 'โทนสีกรมท่า สำหรับจอศูนย์วิทยุและคอมพิวเตอร์',
+      red: 'โทนสีแดง ถนอมสายตาสำหรับห้องโดยสารรถพยาบาล',
+      contrast: 'พื้นดำตัดขาวสนิท คมชัดสูงสำหรับแดดจ้า',
+    };
+    showToast(labels[newTheme], desc[newTheme], 'palette');
+  };
 
   const showToast = (title: string, desc: string, icon = 'check_circle') => {
     setToast({
@@ -224,8 +249,9 @@ export default function App() {
     }, 350);
   };
 
-  // Open ID Card Scanner Modal
-  const handleOpenIdScanner = (_tab?: 'camera' | 'card_reader') => {
+  // Open ID Card Scanner Modal with target tab
+  const handleOpenIdScanner = (tab?: 'camera' | 'card_reader') => {
+    setScannerInitialTab(tab || 'camera');
     setIdScannerOpen(true);
   };
 
@@ -249,7 +275,7 @@ export default function App() {
         currentTab={currentTab}
         onTabChange={setCurrentTab}
         theme={theme}
-        onThemeChange={setTheme}
+        onThemeChange={handleThemeChange}
         onOpenShareModal={() => setShareModalOpen(true)}
       />
 
@@ -362,6 +388,7 @@ export default function App() {
         onClose={() => setIdScannerOpen(false)}
         onApplyData={handleApplyIdData}
         onShowToast={showToast}
+        initialTab={scannerInitialTab}
       />
 
       {/* Notification Toast Container */}

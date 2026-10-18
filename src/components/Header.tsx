@@ -118,44 +118,71 @@ export const Header: React.FC<HeaderProps> = ({
             </span>
           </div>
 
-          {/* Theme switcher */}
-          <div className="hidden sm:flex items-center bg-[#1c1b1b] border border-[#2e2423] rounded-lg p-1 gap-1">
+          {/* Primary Day/Night Mode Switcher */}
+          <div className="hidden sm:flex items-center bg-[#1c1b1b] border border-[#2e2423] rounded-lg p-1 gap-1 shadow-sm">
             <button
-              onClick={() => onThemeChange('hq')}
-              className={`px-2 py-0.5 rounded font-label-tactical text-[11px] transition-colors ${
-                theme === 'hq'
-                  ? 'bg-[#2b2a29] text-[#4cd7f6] font-bold'
-                  : 'text-[#e4beba] hover:text-[#e6e1e1]'
+              onClick={() => onThemeChange('day')}
+              className={`px-2.5 py-1 rounded-md font-headline-md text-xs font-bold flex items-center gap-1.5 transition-all ${
+                theme === 'day'
+                  ? 'bg-amber-400 text-slate-900 shadow-md ring-1 ring-amber-500'
+                  : 'text-[#e4beba] hover:text-white hover:bg-[#2b2a29]'
               }`}
-              title="โหมดศูนย์วิทยุ HQ (Night Slate)"
+              title="สลับเป็นโหมดกลางวัน (สว่าง สบายตา อ่านง่าย)"
               type="button"
             >
-              🌙 HQ
+              <span>☀️</span>
+              <span>กลางวัน</span>
             </button>
+
             <button
-              onClick={() => onThemeChange('red')}
-              className={`px-2 py-0.5 rounded font-label-tactical text-[11px] transition-colors ${
-                theme === 'red'
-                  ? 'bg-[#ff5451] text-[#5c0008] font-bold'
-                  : 'text-[#e4beba] hover:text-[#e6e1e1]'
+              onClick={() => onThemeChange(theme === 'day' ? 'red' : theme)}
+              className={`px-2.5 py-1 rounded-md font-headline-md text-xs font-bold flex items-center gap-1.5 transition-all ${
+                theme !== 'day'
+                  ? 'bg-[#ff5451] text-[#5c0008] shadow-md ring-1 ring-[#ff8885]'
+                  : 'text-[#e4beba] hover:text-white hover:bg-[#2b2a29]'
               }`}
-              title="โหมดปฏิบัติการยุทธวิธีแสงสีแดง"
+              title="สลับเป็นโหมดกลางคืน (ถนอมสายตา)"
               type="button"
             >
-              🔴 RED
+              <span>🌙</span>
+              <span>กลางคืน</span>
             </button>
-            <button
-              onClick={() => onThemeChange('contrast')}
-              className={`px-2 py-0.5 rounded font-label-tactical text-[11px] transition-colors ${
-                theme === 'contrast'
-                  ? 'bg-white text-black font-bold'
-                  : 'text-[#e4beba] hover:text-[#e6e1e1]'
-              }`}
-              title="โหมดคอนทราสต์สูงแสงจ้า"
-              type="button"
-            >
-              ⚡ CONTRAST
-            </button>
+
+            {/* Tactical Sub-theme selector when in Night Mode */}
+            {theme !== 'day' && (
+              <div className="flex items-center pl-1 border-l border-[#2e2423] gap-1">
+                <button
+                  onClick={() => onThemeChange('red')}
+                  className={`px-1.5 py-0.5 rounded font-label-tactical text-[10px] ${
+                    theme === 'red' ? 'bg-[#ff5451] text-[#5c0008] font-bold' : 'text-[#e4beba]'
+                  }`}
+                  title="แสงสีแดง (Night Red)"
+                  type="button"
+                >
+                  🔴 RED
+                </button>
+                <button
+                  onClick={() => onThemeChange('hq')}
+                  className={`px-1.5 py-0.5 rounded font-label-tactical text-[10px] ${
+                    theme === 'hq' ? 'bg-[#2b2a29] text-[#4cd7f6] font-bold' : 'text-[#e4beba]'
+                  }`}
+                  title="ศูนย์ HQ (Night Slate)"
+                  type="button"
+                >
+                  🏢 HQ
+                </button>
+                <button
+                  onClick={() => onThemeChange('contrast')}
+                  className={`px-1.5 py-0.5 rounded font-label-tactical text-[10px] ${
+                    theme === 'contrast' ? 'bg-white text-black font-bold' : 'text-[#e4beba]'
+                  }`}
+                  title="คอนทราสต์จัด (OLED)"
+                  type="button"
+                >
+                  ⚡ OLED
+                </button>
+              </div>
+            )}
           </div>
 
           {/* User profile / Call sign */}
@@ -187,6 +214,14 @@ export const Header: React.FC<HeaderProps> = ({
               {clock}
             </span>
             <div className="flex gap-1">
+              <button
+                onClick={() => onThemeChange('day')}
+                className={`px-2 py-0.5 rounded text-[11px] font-label-tactical font-bold ${
+                  theme === 'day' ? 'bg-amber-400 text-slate-900' : 'text-zinc-400'
+                }`}
+              >
+                DAY
+              </button>
               <button
                 onClick={() => onThemeChange('hq')}
                 className={`px-2 py-0.5 rounded text-[11px] font-label-tactical ${
