@@ -11,20 +11,18 @@ export interface VitalSigns {
   dtx?: string;    // e.g. "110 mg/dL"
 }
 
-export interface ThaiIdCardData {
-  nationalId?: string;
-  title?: string;
-  firstName?: string;
-  lastName?: string;
-  fullName: string;
-  gender: string;
-  genderCount: string;
-  birthDate?: string;
-  age: string;
-  address: string;
-  photoUrl?: string;
-  confidence?: string;
-  readMethod?: 'camera_ai' | 'smart_card';
+
+export interface QuickTopic {
+  id: string;
+  category: 'accident' | 'illness' | 'cpr' | 'rescue' | 'custom';
+  title: string;
+  badge?: string;
+  symptoms: string;
+  locationHint?: string;
+  incidentType: 'accident' | 'illness' | 'cpr' | 'other';
+  unit?: string;
+  hospital?: string;
+  isCustom?: boolean;
 }
 
 export interface IncidentReport {

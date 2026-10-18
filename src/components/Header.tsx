@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { TabType, ThemeMode } from '../types';
-import { HOOK31_LOGO_URL } from '../data/initialData';
+import { Hook31Logo } from './Hook31Logo';
 import { getLiveClockString } from '../utils/formatters';
 
 interface HeaderProps {
@@ -33,27 +33,25 @@ export const Header: React.FC<HeaderProps> = ({
       <div className="h-20 w-full px-4 md:px-6 flex items-center justify-between gap-3">
         {/* Brand & Station Identity */}
         <div className="flex items-center gap-3 min-w-0">
-          <img
-            alt="Hook 31 EMS Emblem"
-            className="h-9 md:h-10 w-auto object-contain flex-shrink-0 drop-shadow"
-            src={HOOK31_LOGO_URL}
-            onError={(e) => {
-              // fallback if external network fails
-              (e.target as HTMLElement).style.display = 'none';
-            }}
-          />
+          <Hook31Logo className="w-10 h-10 md:w-11 md:h-11 flex-shrink-0" />
           <div className="flex flex-col truncate">
-            <div className="flex items-center gap-1.5 flex-wrap">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="font-label-tactical text-[11px] text-[#ffb3ad] font-bold uppercase tracking-wider">
-                HOOK 31 EMS RESCUE UNIT
+                มูลนิธิพุทธธรรม 31 นครราชสีมา (ฮุก 31)
               </span>
               <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-[#2b2a29] text-[#4cd7f6] font-label-tactical text-[11px]">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#4cd7f6] inline-block animate-pulse mr-1"></span>
-                ระบบพร้อม ว.4 (ONLINE)
+                ว.4 ONLINE
+              </span>
+              {/* Radio Communication Frequency 173.475 MHz */}
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-[#3b1212] border border-[#ff5451]/50 text-[#ffb3ad] font-label-tactical text-[11px] font-bold shadow-sm">
+                <span className="material-symbols-outlined text-[14px] text-[#ff5451] animate-pulse">radio</span>
+                <span className="text-[#fff]">173.475 MHz</span>
+                <span className="text-[#ffb3ad] text-[10px] hidden sm:inline">(ข่ายหลัก)</span>
               </span>
             </div>
-            <span className="font-headline-md text-[16px] md:text-[18px] text-[#e6e1e1] font-semibold tracking-tight truncate">
-              ฮุก 31 จุดข้าง สภ.โพธิ์กลาง | ศูนย์วิทยุ นครราชสีมา
+            <span className="font-headline-md text-[15px] md:text-[17px] text-[#e6e1e1] font-semibold tracking-tight truncate">
+              จุดข้าง สภ.โพธิ์กลาง | ศูนย์วิทยุ ฮุก 31 โคราช
             </span>
           </div>
         </div>

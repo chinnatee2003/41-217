@@ -14,7 +14,6 @@ interface IncidentFormProps {
   };
   onToggleSection: (key: 'sec1' | 'sec2' | 'sec3' | 'sec4') => void;
   onShowToast: (title: string, desc: string, icon?: string) => void;
-  onOpenIdScanner: (tab?: 'camera' | 'card_reader') => void;
 }
 
 export const IncidentForm: React.FC<IncidentFormProps> = ({
@@ -23,7 +22,6 @@ export const IncidentForm: React.FC<IncidentFormProps> = ({
   openSections,
   onToggleSection,
   onShowToast,
-  onOpenIdScanner,
 }) => {
   const [showExtraVitals, setShowExtraVitals] = useState(false);
 
@@ -524,33 +522,39 @@ export const IncidentForm: React.FC<IncidentFormProps> = ({
 
         {openSections.sec3 && (
           <div className="p-4 md:p-5 space-y-3.5">
-            {/* Quick Auto-Fill Action Bar: Camera Scan & Smart Card Reader */}
-            <div className="p-3 rounded-xl bg-[#211f1f] border border-[#3e3433] flex flex-wrap items-center justify-between gap-2.5 shadow-sm">
+            {/* Quick EMS Patient Presets */}
+            <div className="p-2.5 rounded-xl bg-[#211f1f] border border-[#3e3433] flex flex-wrap items-center justify-between gap-2 shadow-sm">
               <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-[#4cd7f6] text-[20px]">
-                  badge
+                <span className="material-symbols-outlined text-[#4cd7f6] text-[18px]">
+                  person_search
                 </span>
                 <span className="font-label-tactical text-xs text-[#e6e1e1] font-bold">
-                  กรอกข้อมูลอัตโนมัติจากบัตรประชาชน:
+                  ปุ่มลัดเพศ/สถานะผู้ป่วย:
                 </span>
               </div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <button
-                  onClick={() => onOpenIdScanner('camera')}
-                  className="h-8 md:h-9 px-3 rounded-lg bg-[#ff5451] hover:bg-[#ff8885] text-[#5c0008] font-label-tactical text-[11px] font-bold flex items-center gap-1.5 transition-colors shadow"
-                  type="button"
-                >
-                  <span className="material-symbols-outlined text-[16px]">photo_camera</span>
-                  <span>ถ่ายรูปบัตร (AI Scan)</span>
-                </button>
-                <button
-                  onClick={() => onOpenIdScanner('card_reader')}
-                  className="h-8 md:h-9 px-3 rounded-lg bg-[#4cd7f6] hover:bg-[#38bdf8] text-[#003640] font-label-tactical text-[11px] font-bold flex items-center gap-1.5 transition-colors shadow"
-                  type="button"
-                >
-                  <span className="material-symbols-outlined text-[16px]">memory</span>
-                  <span>เสียบบัตร (Smart Card)</span>
-                </button>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {[
+                  { label: 'ชาย 1 ราย', val: 'ชาย 1 ราย' },
+                  { label: 'หญิง 1 ราย', val: 'หญิง 1 ราย' },
+                  { label: 'เด็ก 1 ราย', val: 'เด็ก 1 ราย' },
+                  { label: 'ไม่ทราบชื่อ/หมดสติ', val: 'ชาย 1 ราย', name: 'ไม่ทราบชื่อ (หมดสติ)' },
+                  { label: 'ปฏิเสธการรักษา', val: '1 ราย', name: 'ปฏิเสธการรักษา' },
+                ].map((preset, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => {
+                      updateField('genderCount', preset.val);
+                      if (preset.name) {
+                        updateField('patientName', preset.name);
+                      }
+                      onShowToast('เลือกข้อมูลด่วน', `ตั้งค่า ${preset.label} เรียบร้อย`, 'check');
+                    }}
+                    className="h-7 px-2.5 rounded-md bg-[#2b2a29] hover:bg-[#383635] text-[#e4beba] hover:text-[#fff] border border-[#3e3433] font-label-tactical text-[11px] font-semibold transition-colors flex items-center gap-1 active:scale-95"
+                  >
+                    <span>{preset.label}</span>
+                  </button>
+                ))}
               </div>
             </div>
 

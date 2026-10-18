@@ -131,5 +131,4 @@ export const AMBULANCE_UNITS = [
   'รถตรวจการณ์ ฮุก 31',
 ];
 
-export const HOOK31_LOGO_URL =
-  'https://lh3.googleusercontent.com/aida-public/AB6AXuBkjrfvvZb8u-ctsdNIeY3bQlJ97Q6ExE8AEWyy0yG5thdXxkJZMS2hi9PwetMf87mC4Mg3hwgXq3D4OWMVpAlG0-H3aF-nDx4sLHOlU3vnQ092zab7ainhSBROh9zH5ITcWspH5IWbERpOvfRsycggIKR-5FppIl05TxjuqlCvrxZgFkvZHX-1dtnjUS2d4UgSDHfE6KN81_bZ7nbWwHmQUT6iSItp0aZJ2IB_aKhcVUgcdOFIpjFrOw';
+export const HOOK31_LOGO_URL = '/hook31_logo.svg';
