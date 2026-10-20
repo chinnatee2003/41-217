@@ -1,22 +1,29 @@
 import React from 'react';
+import { RADIO_FREQUENCY, APP_LEGAL_DISCLAIMER } from '../data/initialData';
 
 export const Footer: React.FC = () => {
   return (
-    <footer className="w-full bg-[#0f0e0e] border-t border-[#2e2423] shadow-[0_-1px_6px_rgba(0,0,0,0.5)] mt-auto no-print">
-      <div className="w-full px-4 md:px-6 py-3.5 flex flex-col md:flex-row items-center justify-between gap-2.5">
-        <div className="flex items-center gap-2 font-label-tactical text-[11px] text-[#e4beba] flex-wrap justify-center md:justify-start">
-          <span>
-            หน่วยกู้ชีพ-กู้ภัย มูลนิธิพุทธธรรม 31 นครราชสีมา (ฮุก 31) จุดบริการประชาชน สภ.โพธิ์กลาง
-          </span>
-          <span className="hidden sm:inline">•</span>
-          <span className="text-[#ffb95f]">
-            ความถี่วิทยุ 168.275 MHz / 168.775 MHz
-          </span>
+    <footer className="w-full bg-[#120a0b] border-t border-[#3b1215] mt-auto no-print">
+      <div className="max-w-[1720px] mx-auto px-4 md:px-6 py-4 flex flex-col gap-2.5">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-[#e4beba]">
+          <div className="flex items-center gap-2 flex-wrap justify-center sm:justify-start">
+            <span className="font-semibold text-white">
+              หน่วยกู้ชีพ-กู้ภัย มูลนิธิพุทธธรรม 31 นครราชสีมา (ฮุก 31)
+            </span>
+            <span className="hidden sm:inline">·</span>
+            <span className="text-[#ff8885] font-bold">
+              ความถี่วิทยุสื่อสาร: {RADIO_FREQUENCY}
+            </span>
+          </div>
+
+          <div className="text-[11px] text-neutral-400">
+            ระบบฟรี 100% · ทำงานในเบราว์เซอร์ · ไม่ใช้ฐานข้อมูล
+          </div>
         </div>
 
-        <div className="flex items-center gap-3 font-label-tactical text-[11px] text-[#e4beba]">
-          <span>ว.8 DISPATCH LINE BOT v2.4</span>
-          <span className="text-[#4cd7f6] font-bold">ENCRYPTED FIELD RELAY</span>
+        <div className="text-[11px] text-neutral-400 border-t border-[#261013] pt-2 text-center sm:text-left leading-relaxed">
+          <span className="text-neutral-300 font-semibold">ข้อแจ้งเตือน: </span>
+          {APP_LEGAL_DISCLAIMER}
         </div>
       </div>
     </footer>

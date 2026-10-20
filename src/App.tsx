@@ -1,42 +1,71 @@
 import { useState, useEffect } from 'react';
 import { Header } from './components/Header';
-import { CommandRibbon } from './components/CommandRibbon';
+import { QuickTopicsBar } from './components/QuickTopicsBar';
 import { IncidentForm } from './components/IncidentForm';
 import { LineConsole } from './components/LineConsole';
-import { DailyStatsView } from './components/DailyStatsView';
-import { PwaGuideView } from './components/PwaGuideView';
-import { ShareModal } from './components/ShareModal';
-import { ResetConfirmModal } from './components/ResetConfirmModal';
+import { MobileBottomNav } from './components/MobileBottomNav';
 import { PrintRunSheetModal } from './components/PrintRunSheetModal';
+import { PreviewReportModal } from './components/PreviewReportModal';
+import { SettingsModal } from './components/SettingsModal';
+import { ResetConfirmModal } from './components/ResetConfirmModal';
+import { AddQuickTopicModal } from './components/AddQuickTopicModal';
 import { Footer } from './components/Footer';
-import { IncidentReport, ShiftStats, TabType, ThemeMode } from './types';
-import { INITIAL_REPORT, SAMPLE_CASES } from './data/initialData';
-import { getLiveTimeString, getTodayThaiDate } from './utils/formatters';
+import {
+  IncidentReport,
+  SectionVisibility,
+  ShiftStats,
+  QuickTopic,
+  ThemeMode,
+} from './types';
+import {
+  INITIAL_EMPTY_REPORT,
+  DEFAULT_VISIBILITY,
+  PRESET_TOPICS,
+  RADIO_FREQUENCY,
+} from './data/initialData';
 
 export default function App() {
-  const [currentTab, setCurrentTab] = useState<TabType>('report');
   const [theme, setTheme] = useState<ThemeMode>('red');
 
-  // Active form report
-  const [report, setReport] = useState<IncidentReport>(INITIAL_REPORT);
+  // Active form report: 100% BLANK by default
+  const [report, setReport] = useState<IncidentReport>(INITIAL_EMPTY_REPORT);
 
-  // Daily logged cases for Pho Klang station
-  const [cases, setCases] = useState<IncidentReport[]>(SAMPLE_CASES);
+  // Section visibility toggles
+  const [visibility, setVisibility] = useState<SectionVisibility>(DEFAULT_VISIBILITY);
 
-  // Accordion state
-  const [openSections, setOpenSections] = useState({
-    sec1: true,
-    sec2: true,
-    sec3: true,
-    sec4: true,
+  // Quick topics list (presets + custom saved in browser localStorage)
+  const [topics, setTopics] = useState<QuickTopic[]>(() => {
+    try {
+      const saved = localStorage.getItem('hook31_custom_topics');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return [...PRESET_TOPICS, ...parsed];
+      }
+    } catch {
+      // ignore
+    }
+    return PRESET_TOPICS;
   });
 
-  // Modals
+  // Shift logged cases (local only)
+  const [cases, setCases] = useState<IncidentReport[]>(() => {
+    try {
+      const saved = localStorage.getItem('hook31_logged_cases');
+      if (saved) return JSON.parse(saved);
+    } catch {
+      // ignore
+    }
+    return [];
+  });
+
+  // Modals state
   const [resetModalOpen, setResetModalOpen] = useState(false);
   const [printModalOpen, setPrintModalOpen] = useState(false);
-  const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [previewModalOpen, setPreviewModalOpen] = useState(false);
+  const [settingsModalOpen, setSettingsModalOpen] = useState(false);
+  const [addTopicModalOpen, setAddTopicModalOpen] = useState(false);
 
-  // Toast
+  // Toast notification
   const [toast, setToast] = useState<{
     show: boolean;
     title: string;
@@ -49,17 +78,16 @@ export default function App() {
     icon: 'check_circle',
   });
 
-  // Calculate shift stats (total, illness, accident, cpr, other)
-  // We compute based on logged cases plus fixed base to match the 14 cases in the screenshot
+  // Calculate real shift stats from logged cases (Zero mock fake numbers)
   const stats: ShiftStats = {
-    total: 14 + (cases.length > SAMPLE_CASES.length ? cases.length - SAMPLE_CASES.length : 0),
-    illness: 9 + (cases.filter((c) => c.incidentType === 'illness').length - 2),
-    accident: 4 + (cases.filter((c) => c.incidentType === 'accident').length - 2),
-    cpr: 1 + (cases.filter((c) => c.incidentType === 'cpr').length - 1),
-    other: 0,
+    total: cases.length,
+    illness: cases.filter((c) => c.incidentType === 'illness').length,
+    accident: cases.filter((c) => c.incidentType === 'accident').length,
+    cpr: cases.filter((c) => c.incidentType === 'cpr').length,
+    other: cases.filter((c) => c.incidentType === 'other').length,
   };
 
-  // Switch HTML root class for themes (Day vs Night)
+  // Sync theme
   useEffect(() => {
     document.body.className = `theme-${theme}`;
     if (theme === 'day') {
@@ -71,21 +99,28 @@ export default function App() {
     }
   }, [theme]);
 
-  const handleThemeChange = (newTheme: ThemeMode) => {
-    setTheme(newTheme);
-    const labels = {
-      day: 'โหมดกลางวัน (Day Mode ☀️)',
-      hq: 'โหมดศูนย์วิทยุ HQ (Night Slate 🌙)',
-      red: 'โหมดยุทธวิธีแสงสีแดง (Night Red 🔴)',
-      contrast: 'โหมดคอนทราสต์จัด (OLED ⚡)',
-    };
-    const desc = {
-      day: 'พื้นหลังสว่าง ชัดเจน สบายตาสำหรับเวลากลางวัน',
-      hq: 'โทนสีกรมท่า สำหรับจอศูนย์วิทยุและคอมพิวเตอร์',
-      red: 'โทนสีแดง ถนอมสายตาสำหรับห้องโดยสารรถพยาบาล',
-      contrast: 'พื้นดำตัดขาวสนิท คมชัดสูงสำหรับแดดจ้า',
-    };
-    showToast(labels[newTheme], desc[newTheme], 'palette');
+  // Persist custom topics
+  const handleAddCustomTopic = (newTopic: QuickTopic) => {
+    const updated = [...topics, newTopic];
+    setTopics(updated);
+    try {
+      const customOnly = updated.filter((t) => t.isCustom);
+      localStorage.setItem('hook31_custom_topics', JSON.stringify(customOnly));
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleDeleteCustomTopic = (id: string) => {
+    const updated = topics.filter((t) => t.id !== id);
+    setTopics(updated);
+    try {
+      const customOnly = updated.filter((t) => t.isCustom);
+      localStorage.setItem('hook31_custom_topics', JSON.stringify(customOnly));
+    } catch {
+      // ignore
+    }
+    showToast('ลบหัวข้อแล้ว', 'ลบตัวเลือกด่วนออกจากระบบเรียบร้อย', 'delete');
   };
 
   const showToast = (title: string, desc: string, icon = 'check_circle') => {
@@ -100,133 +135,87 @@ export default function App() {
     }, 3200);
   };
 
-  const handleToggleSection = (key: 'sec1' | 'sec2' | 'sec3' | 'sec4') => {
-    setOpenSections((prev) => ({
-      ...prev,
-      [key]: !prev[key],
-    }));
-  };
-
-  const handleToggleAllSections = (expand: boolean) => {
-    setOpenSections({
-      sec1: expand,
-      sec2: expand,
-      sec3: expand,
-      sec4: expand,
+  // Section Visibility Handlers
+  const handleToggleVisibility = (key: keyof SectionVisibility) => {
+    setVisibility((prev) => {
+      const nextVal = !prev[key];
+      showToast(
+        nextVal ? 'เปิดแสดงหัวข้อ' : 'ปิดซ่อนหัวข้อ',
+        nextVal ? 'หัวข้อนี้จะปรากฏในรายงาน' : 'ซ่อนหัวข้อนี้จากรายงาน LINE & PDF',
+        nextVal ? 'visibility' : 'visibility_off'
+      );
+      return {
+        ...prev,
+        [key]: nextVal,
+      };
     });
-    showToast(
-      expand ? 'กางทุกหัวข้อแล้ว' : 'พับเก็บทุกหัวข้อแล้ว',
-      'ปรับมุมมองฟอร์มเรียบร้อย',
-      expand ? 'unfold_more' : 'unfold_less'
-    );
   };
 
-  // Quick triage template apply
-  const handleApplyTemplate = (type: 'illness' | 'accident' | 'cpr') => {
-    if (type === 'illness') {
-      setReport((prev) => ({
-        ...prev,
-        incidentType: 'illness',
-        symptoms: 'มีอาการ ไข้สูง หนาวสั่น อ่อนเพลีย',
-        vitals: {
-          ...prev.vitals,
-          bp: '120/80',
-          pr: '84',
-          spo2: '98',
-          temp: '38.5',
-        },
-        notes: 'ผู้ป่วยรู้สึกตัวดี ถามตอบรู้เรื่อง ให้ออกซิเจนแคนนูล่า 3 LPM นำส่ง รพ.',
-      }));
-      showToast('ใช้เทมเพลต: ว.8 ป่วยทั่วไป', 'โหลดชุดข้อมูลเคสป่วยเรียบร้อย', 'medical_services');
-    } else if (type === 'accident') {
-      setReport((prev) => ({
-        ...prev,
-        incidentType: 'accident',
-        symptoms: 'ว.40 จยย.+เก๋ง มีแผลถลอกตามร่างกาย ปวดเจ็บบริเวณสะโพก',
-        vitals: {
-          ...prev.vitals,
-          bp: '132/86',
-          pr: '96',
-          spo2: '99',
-          temp: '36.8',
-        },
-        notes: 'ดามบล็อคคอ (Hard Collar) ใส่บอร์ด ปฐมพยาบาลห้ามเลือด นำส่ง รพ.เทพรัตน์',
-      }));
-      showToast('ใช้เทมเพลต: ว.40 อุบัติเหตุ', 'โหลดชุดข้อมูลอุบัติเหตุทางถนนเรียบร้อย', 'car_crash');
-    } else if (type === 'cpr') {
-      setReport((prev) => ({
-        ...prev,
-        incidentType: 'cpr',
-        symptoms: '🚨 วิกฤต หมดสติ ปลุกไม่ตื่น ไม่หายใจ คลำชีพจรไม่พบ (Cardiac Arrest)',
-        vitals: {
-          ...prev.vitals,
-          bp: '0/0',
-          pr: '0',
-          spo2: '50',
-          temp: '35.9',
-        },
-        notes: 'เริ่มทำ CPR ทันที ติดแผ่น AED แนะนำไม่ช็อค ใส่ท่อ LMA บีบ Ambu bag ประสาน ว.7 กู้ชีพ รพ.มหาราช',
-      }));
-      showToast('ใช้เทมเพลต: CPR / วิกฤตหมดสติ', 'เปิดโหมดเคสฉุกเฉินระดับสีแดง', 'e911_emergency');
-    }
-  };
-
-  // Form Reset
-  const handleConfirmReset = () => {
-    // extract previous numeric case number if any
-    const match = report.caseId.match(/\d+/);
-    const nextNum = match ? parseInt(match[0], 10) + 1 : 605;
-
-    setReport({
-      id: `case-${nextNum}`,
-      station: 'จุด ว.8 ฮุก 31 จุดข้าง สภ.โพธิ์กลาง',
-      caseId: `เคสที่ ${nextNum}`,
-      timestamp: getLiveTimeString(),
-      dateStr: getTodayThaiDate(),
-      unit: 'รถพยาบาลคันที่ 11',
-      symptoms: '',
-      incidentType: 'illness',
-      location: '',
-      genderCount: '',
-      patientName: '',
-      patientAge: '',
-      patientAddress: '',
-      vitals: {
-        bp: '',
-        pr: '',
-        spo2: '',
-        temp: '',
+  const handleShowAllSections = () => {
+    const allTrue: SectionVisibility = Object.keys(DEFAULT_VISIBILITY).reduce(
+      (acc, key) => {
+        acc[key as keyof SectionVisibility] = true;
+        return acc;
       },
-      hospital: 'รพ.เทพรัตน์นครราชสีมา',
-      crew: report.crew || 'พบ.32, พบ.34, ข้างสภ.220',
-      notes: '',
-      createdAt: Date.now(),
-    });
-
-    setResetModalOpen(false);
-    showToast('ล้างข้อมูลเรียบร้อยแล้ว', `แบบฟอร์มว่างเปล่า พร้อมสำหรับคีย์เคสที่ ${nextNum}`, 'delete_sweep');
+      {} as SectionVisibility
+    );
+    setVisibility(allTrue);
+    showToast('เปิดทุกหัวข้อแล้ว', 'แสดงรายละเอียดทั้งหมดในรายงาน', 'unfold_more');
   };
 
-  // Save case to shift log
+  const handleHideOptionalSections = () => {
+    setVisibility((prev) => ({
+      ...prev,
+      vitals: false,
+      policeStation: false,
+      officerName: false,
+      notes: false,
+      caseId: false,
+    }));
+    showToast('ซ่อนหัวข้อเสริมแล้ว', 'เหลือเฉพาะหัวข้อรายงานด่วน', 'unfold_less');
+  };
+
+  // Apply Quick Topic
+  const handleSelectTopic = (topic: QuickTopic) => {
+    setReport((prev) => ({
+      ...prev,
+      incidentType: topic.incidentType,
+      symptoms: topic.symptoms,
+      unit: topic.unit || prev.unit,
+      hospital: topic.hospital || prev.hospital,
+    }));
+    showToast(`เลือกหัวข้อ: ${topic.title}`, topic.symptoms, 'bolt');
+  };
+
+  // Form Reset / New Report
+  const handleConfirmReset = () => {
+    setReport({
+      ...INITIAL_EMPTY_REPORT,
+      id: `case-${Date.now()}`,
+    });
+    setResetModalOpen(false);
+    showToast('ล้างข้อมูลเรียบร้อยแล้ว', 'แบบฟอร์มว่างเปล่า พร้อมสำหรับคีย์เคสใหม่', 'restart_alt');
+  };
+
+  // Save Case to Local Log
   const handleSaveCaseToLog = () => {
+    if (!report.symptoms && !report.patientName && !report.location) {
+      showToast('ฟอร์มยังว่างอยู่', 'กรุณากรอกข้อมูลอย่างน้อย 1 รายการก่อนบันทึก', 'warning');
+      return;
+    }
     const newCase: IncidentReport = {
       ...report,
-      id: `case-${Date.now()}`,
+      id: report.id || `case-${Date.now()}`,
       createdAt: Date.now(),
     };
-    setCases([newCase, ...cases]);
-    showToast(
-      'บันทึกเคสสำเร็จแล้ว',
-      `เพิ่ม ${report.caseId} เข้าสถิติเวรประจำวันเรียบร้อย`,
-      'bookmark_added'
-    );
-  };
-
-  // Handle load case from stats list
-  const handleSelectCaseFromStats = (c: IncidentReport) => {
-    setReport(c);
-    setCurrentTab('report');
-    showToast('โหลดเคสแล้ว', `นำข้อมูล ${c.caseId} เข้าสู่หน้าแบบฟอร์ม`, 'edit');
+    const updated = [newCase, ...cases];
+    setCases(updated);
+    try {
+      localStorage.setItem('hook31_logged_cases', JSON.stringify(updated));
+    } catch {
+      // ignore
+    }
+    showToast('บันทึกเคสสำเร็จ', 'เก็บประวัติไว้ในเครื่องเรียบร้อย (ไม่ส่งภายนอก)', 'bookmark_added');
   };
 
   // Copy success toast
@@ -246,96 +235,97 @@ export default function App() {
     }, 350);
   };
 
+  // Trigger PDF Download (Opens print preview styled specifically for A4 PDF saving)
+  const handleDownloadPdf = () => {
+    setPrintModalOpen(true);
+    showToast(
+      'เปิดหน้าต่างบันทึก PDF',
+      'ในหน้าต่างสั่งพิมพ์ ให้เลือกเครื่องพิมพ์เป็น "บันทึกเป็น PDF" (Save as PDF)',
+      'picture_as_pdf'
+    );
+  };
+
+  const handlePrintReport = () => {
+    setPrintModalOpen(true);
+  };
+
   return (
-    <div className="min-h-screen bg-[#141313] text-[#e6e1e1] flex flex-col font-sans">
-      {/* Top Fixed Header */}
+    <div className="min-h-screen bg-[#120a0b] text-slate-100 flex flex-col font-sans selection:bg-[#ff5451] selection:text-white">
+      {/* Top Fixed Header with all required action buttons */}
       <Header
-        currentTab={currentTab}
-        onTabChange={setCurrentTab}
         theme={theme}
-        onThemeChange={handleThemeChange}
-        onOpenShareModal={() => setShareModalOpen(true)}
+        onThemeChange={setTheme}
+        onNewReport={() => setResetModalOpen(true)}
+        onOpenPreview={() => setPreviewModalOpen(true)}
+        onCopyText={handleCopySuccess}
+        onDownloadPdf={handleDownloadPdf}
+        onPrintReport={handlePrintReport}
+        onOpenSettings={() => setSettingsModalOpen(true)}
       />
 
       {/* Main Container */}
-      <main className="w-full pt-20 flex-1 flex flex-col">
-        {currentTab === 'report' && (
-          <div className="flex flex-col w-full">
-            {/* Top Tactical Command Ribbon */}
-            <CommandRibbon
-              onApplyTemplate={handleApplyTemplate}
-              onToggleAllSections={handleToggleAllSections}
-              onOpenResetModal={() => setResetModalOpen(true)}
-            />
+      <main className="w-full pt-16 flex-1 flex flex-col">
+        {/* Quick Topics & Radio Frequency Action Bar */}
+        <QuickTopicsBar
+          topics={topics}
+          onSelectTopic={handleSelectTopic}
+          onOpenAddModal={() => setAddTopicModalOpen(true)}
+          onDeleteCustomTopic={handleDeleteCustomTopic}
+        />
 
-            {/* Main Incident Console: 2-Column Responsive Split */}
-            <div className="w-full max-w-[1720px] mx-auto px-4 md:px-6 py-5 flex-1">
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-                {/* LEFT COLUMN: Dispatch Field Form (7 cols) */}
-                <div className="lg:col-span-7 2xl:col-span-7">
-                  <IncidentForm
-                    report={report}
-                    onChange={setReport}
-                    openSections={openSections}
-                    onToggleSection={handleToggleSection}
-                    onShowToast={showToast}
-                  />
-                </div>
+        {/* Notice of 100% Free / Client-Side privacy */}
+        <div className="bg-[#1f1013] border-b border-[#3b1215] px-4 py-1.5 text-center text-[11px] text-[#e4beba]">
+          <span className="text-[#06C755] font-bold">● ทำงานในเบราว์เซอร์ 100% ฟรี</span>
+          <span className="mx-2">|</span>
+          <span>ความถี่วิทยุหลัก: <strong className="text-white">{RADIO_FREQUENCY}</strong></span>
+          <span className="mx-2 hidden sm:inline">|</span>
+          <span className="hidden sm:inline">ไม่ส่งข้อมูลผู้ป่วยไปภายนอก</span>
+        </div>
 
-                {/* RIGHT COLUMN: Sticky LINE Live Output Console (5 cols) */}
-                <div className="lg:col-span-5 2xl:col-span-5">
-                  <LineConsole
-                    report={report}
-                    stats={stats}
-                    onCopySuccess={handleCopySuccess}
-                    onOpenLine={handleOpenLine}
-                    onPrintRunSheet={() => setPrintModalOpen(true)}
-                    onSaveCaseToLog={handleSaveCaseToLog}
-                  />
-                </div>
-              </div>
+        {/* 2-Column Responsive Layout */}
+        <div className="w-full max-w-[1720px] mx-auto px-3 sm:px-5 py-4 flex-1">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+            {/* LEFT COLUMN: Field Dispatch Form (7 cols) */}
+            <div className="lg:col-span-7 xl:col-span-7">
+              <IncidentForm
+                report={report}
+                onChange={setReport}
+                visibility={visibility}
+                onToggleVisibility={handleToggleVisibility}
+                onShowAllSections={handleShowAllSections}
+                onHideOptionalSections={handleHideOptionalSections}
+                onShowToast={showToast}
+              />
+            </div>
+
+            {/* RIGHT COLUMN: Sticky Live LINE Output (5 cols) */}
+            <div className="lg:col-span-5 xl:col-span-5">
+              <LineConsole
+                report={report}
+                visibility={visibility}
+                stats={stats}
+                onCopySuccess={handleCopySuccess}
+                onOpenLine={handleOpenLine}
+                onPrintRunSheet={handlePrintReport}
+                onDownloadPdf={handleDownloadPdf}
+                onSaveCaseToLog={handleSaveCaseToLog}
+                onNewReport={() => setResetModalOpen(true)}
+              />
             </div>
           </div>
-        )}
-
-        {currentTab === 'stats' && (
-          <DailyStatsView
-            cases={cases}
-            stats={stats}
-            onSelectCase={handleSelectCaseFromStats}
-            onShowToast={showToast}
-          />
-        )}
-
-        {currentTab === 'pwa' && (
-          <PwaGuideView
-            onBackToReport={() => setCurrentTab('report')}
-            onShowToast={showToast}
-          />
-        )}
-
-        {currentTab === 'share' && (
-          <div className="w-full max-w-4xl mx-auto px-4 py-8">
-            <div className="bg-[#1c1b1b] border border-[#2e2423] rounded-xl p-6 text-center space-y-4">
-              <h2 className="font-headline-md text-2xl font-bold text-[#e6e1e1]">
-                แชร์ระบบ ว.8 กู้ชีพ-กู้ภัย ฮุก 31
-              </h2>
-              <p className="text-sm text-[#e4beba]">
-                เปิดหน้าต่างสแกน QR Code สำหรับแจกจ่ายให้อาสาสมัครในข่ายวิทยุ
-              </p>
-              <button
-                onClick={() => setShareModalOpen(true)}
-                className="px-6 py-2.5 rounded-lg bg-[#4cd7f6] text-[#003640] font-headline-md font-bold text-sm shadow hover:bg-[#38bdf8] transition-colors inline-flex items-center gap-2"
-              >
-                <span className="material-symbols-outlined text-[20px]">qr_code_2</span>
-                <span>เปิดหน้าต่าง QR Code & แชร์ LINE</span>
-              </button>
-            </div>
-          </div>
-        )}
+        </div>
       </main>
 
-      {/* Global Tactical Footer */}
+      {/* Mobile Ergonomic Bottom Toolbar (Doesn't block form) */}
+      <MobileBottomNav
+        onNewReport={() => setResetModalOpen(true)}
+        onOpenPreview={() => setPreviewModalOpen(true)}
+        onCopyText={handleCopySuccess}
+        onDownloadPdf={handleDownloadPdf}
+        onPrintReport={handlePrintReport}
+      />
+
+      {/* Footer */}
       <Footer />
 
       {/* Reset Confirmation Dialog */}
@@ -345,38 +335,64 @@ export default function App() {
         onConfirm={handleConfirmReset}
       />
 
-      {/* EMS Run Sheet Print Preview Modal */}
+      {/* Full Preview Modal */}
+      <PreviewReportModal
+        isOpen={previewModalOpen}
+        onClose={() => setPreviewModalOpen(false)}
+        report={report}
+        visibility={visibility}
+        onCopyText={handleCopySuccess}
+        onDownloadPdf={handleDownloadPdf}
+        onPrintReport={handlePrintReport}
+      />
+
+      {/* EMS Run Sheet Print & PDF Modal */}
       <PrintRunSheetModal
         isOpen={printModalOpen}
         onClose={() => setPrintModalOpen(false)}
         report={report}
+        visibility={visibility}
       />
 
-      {/* Share / QR Modal */}
-      <ShareModal
-        isOpen={shareModalOpen}
-        onClose={() => setShareModalOpen(false)}
+      {/* Settings Modal */}
+      <SettingsModal
+        isOpen={settingsModalOpen}
+        onClose={() => setSettingsModalOpen(false)}
+        customTopics={topics.filter((t) => t.isCustom)}
+        onDeleteCustomTopic={handleDeleteCustomTopic}
+        onOpenAddTopicModal={() => setAddTopicModalOpen(true)}
+        visibility={visibility}
+        onToggleVisibility={handleToggleVisibility}
+        onShowAllSections={handleShowAllSections}
+        onHideOptionalSections={handleHideOptionalSections}
         onShowToast={showToast}
       />
 
+      {/* Add Custom Quick Topic Modal */}
+      <AddQuickTopicModal
+        isOpen={addTopicModalOpen}
+        onClose={() => setAddTopicModalOpen(false)}
+        onAddTopic={handleAddCustomTopic}
+        onShowToast={showToast}
+      />
 
-      {/* Notification Toast Container */}
+      {/* Toast Notification Container */}
       <div
-        className={`fixed bottom-6 right-6 z-50 transition-all duration-300 pointer-events-none ${
+        className={`fixed bottom-16 md:bottom-6 right-4 sm:right-6 z-50 transition-all duration-300 pointer-events-none ${
           toast.show
-            ? 'translate-y-0 opacity-100'
-            : 'translate-y-20 opacity-0'
+            ? 'translate-y-0 opacity-100 scale-100'
+            : 'translate-y-10 opacity-0 scale-95'
         }`}
       >
-        <div className="px-5 py-3 rounded-xl bg-[#2b2a29] border border-[#3e3433] text-[#e6e1e1] shadow-2xl flex items-center gap-3">
-          <span className="material-symbols-outlined text-[#06C755] text-[24px]">
+        <div className="px-4 py-3 rounded-xl bg-[#221214] border border-[#ff5451]/50 text-white shadow-2xl flex items-center gap-3">
+          <span className="material-symbols-outlined text-[#06C755] text-[22px]">
             {toast.icon}
           </span>
           <div className="flex flex-col">
-            <span className="font-headline-md text-sm font-bold text-[#e6e1e1]">
+            <span className="text-xs font-bold text-white">
               {toast.title}
             </span>
-            <span className="font-body-sm text-xs text-[#e4beba]">
+            <span className="text-[11px] text-[#e4beba]">
               {toast.desc}
             </span>
           </div>

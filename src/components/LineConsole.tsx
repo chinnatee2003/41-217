@@ -1,26 +1,31 @@
 import React, { useState } from 'react';
-import { IncidentReport, ShiftStats } from '../types';
+import { IncidentReport, SectionVisibility, ShiftStats } from '../types';
 import { generateLineReport } from '../utils/formatters';
 
 interface LineConsoleProps {
   report: IncidentReport;
+  visibility: SectionVisibility;
   stats: ShiftStats;
   onCopySuccess: () => void;
   onOpenLine: () => void;
   onPrintRunSheet: () => void;
+  onDownloadPdf: () => void;
   onSaveCaseToLog: () => void;
+  onNewReport: () => void;
 }
 
 export const LineConsole: React.FC<LineConsoleProps> = ({
   report,
-  stats,
+  visibility,
   onCopySuccess,
   onOpenLine,
   onPrintRunSheet,
+  onDownloadPdf,
   onSaveCaseToLog,
+  onNewReport,
 }) => {
   const [copiedEffect, setCopiedEffect] = useState(false);
-  const formattedText = generateLineReport(report);
+  const formattedText = generateLineReport(report, visibility, false);
 
   const handleCopy = () => {
     navigator.clipboard
@@ -31,7 +36,6 @@ export const LineConsole: React.FC<LineConsoleProps> = ({
         setTimeout(() => setCopiedEffect(false), 800);
       })
       .catch(() => {
-        // Fallback for older environments or strict iframes
         const textArea = document.createElement('textarea');
         textArea.value = formattedText;
         document.body.appendChild(textArea);
@@ -51,153 +55,122 @@ export const LineConsole: React.FC<LineConsoleProps> = ({
   return (
     <div className="flex flex-col gap-4 lg:sticky lg:top-24">
       {/* LINE Bubble Card Simulator */}
-      <div className="rounded-xl bg-[#1c1b1b] border border-[#2e2423] shadow-xl overflow-hidden flex flex-col">
+      <div className="rounded-xl bg-[#191415] border border-[#3b1215] shadow-xl overflow-hidden flex flex-col">
         {/* LINE Header Strip */}
-        <div className="px-4 py-3 bg-[#211f1f] border-b border-[#2e2423] flex items-center justify-between">
+        <div className="px-4 py-3 bg-[#241315] border-b border-[#3b1215] flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="w-7 h-7 rounded-full bg-[#06C755] flex items-center justify-center font-bold text-white text-[12px] shadow-sm tracking-tighter">
               LINE
             </div>
             <div className="flex flex-col">
-              <span className="font-headline-md text-sm md:text-base text-[#e6e1e1] font-bold leading-tight">
-                กลุ่มกู้ภัย ฮุก 31 โพธิ์กลาง
+              <span className="font-headline-md text-sm md:text-base text-white font-bold leading-tight">
+                กลุ่มกู้ภัย ฮุก 31 นครราชสีมา
               </span>
-              <span className="font-label-tactical text-[11px] text-[#4cd7f6]">
-                ว.8 DISPATCH BROADCAST FEED
+              <span className="font-label-tactical text-[11px] text-[#ff8885]">
+                ตัวอย่างข้อความพร้อมส่ง (LIVE LINE PREVIEW)
               </span>
             </div>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-[#06C755] animate-ping"></span>
-            <span className="font-label-tactical text-[11px] text-[#e4beba]">
-              LIVE PREVIEW
-            </span>
+            <span className="text-[11px] font-bold text-[#06C755]">พร้อมส่ง</span>
           </div>
         </div>
 
         {/* LINE Chat Interior */}
-        <div className="p-4 bg-[#0f0e0e] min-h-[380px] max-h-[520px] overflow-y-auto space-y-3">
+        <div className="p-4 bg-[#110c0d] min-h-[360px] max-h-[500px] overflow-y-auto space-y-3">
           <div className="flex items-start gap-2.5">
             {/* Avatar 31 */}
-            <div className="w-8 h-8 rounded-full bg-[#ff5451] text-[#5c0008] flex items-center justify-center font-label-tactical text-xs font-bold flex-shrink-0 mt-1 shadow-sm">
+            <div className="w-8 h-8 rounded-full bg-[#ff5451] text-[#4a0005] flex items-center justify-center text-xs font-black flex-shrink-0 mt-1 shadow-sm">
               31
             </div>
 
             <div className="flex flex-col max-w-[94%]">
-              <span className="font-label-tactical text-[11px] text-[#e4beba] mb-1 ml-1">
-                จุดข้าง สภ.โพธิ์กลาง (ว.8 Relay)
+              <span className="text-[11px] text-[#e4beba] mb-1 ml-1">
+                {report.station || 'จุดบริการ ฮุก 31 นครราชสีมา'}
               </span>
 
-              {/* Tactical Message Bubble */}
-              <div className="p-3.5 rounded-xl rounded-tl-xs bg-[#2b2a29] border border-[#3e3433] text-[#e6e1e1] shadow-md select-text relative group">
-                <pre className="font-label-tactical text-xs md:text-[13px] leading-relaxed whitespace-pre-wrap font-medium break-words text-[#e6e1e1]">
+              {/* Message Bubble */}
+              <div className="p-3.5 rounded-xl rounded-tl-xs bg-[#221618] border border-[#3b1c20] text-white shadow-md select-text relative">
+                <pre className="font-sans text-xs md:text-[13px] leading-relaxed whitespace-pre-wrap font-normal break-words text-slate-100">
                   {formattedText}
                 </pre>
-                <div className="mt-2.5 pt-1.5 border-t border-[#3a302f] flex items-center justify-between text-[#e4beba] font-label-tactical text-[11px] opacity-80">
-                  <span>ฮุก 31 นครราชสีมา</span>
-                  <span>{report.timestamp || '15:46 น.'}</span>
+                <div className="mt-2.5 pt-1.5 border-t border-[#3b1c20] flex items-center justify-between text-[#e4beba] text-[11px] opacity-80">
+                  <span>มูลนิธิพุทธธรรม 31 นครราชสีมา</span>
+                  <span>{report.timestamp || 'เวลาปัจจุบัน'}</span>
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Primary Actions Hub */}
-        <div className="p-4 bg-[#211f1f] border-t border-[#2e2423] space-y-2.5">
-          {/* Quick Copy Button (Primary Hero Target) */}
+        {/* Action Controls Footer */}
+        <div className="p-3.5 bg-[#1f1214] border-t border-[#3b1215] flex flex-col gap-2">
+          {/* Main Action: คัดลอกข้อความ */}
           <button
+            type="button"
             onClick={handleCopy}
-            className={`w-full h-14 rounded-xl font-headline-md text-base md:text-lg font-bold flex items-center justify-center gap-2 shadow-lg transition-all active:scale-[0.98] ${
+            className={`w-full py-2.5 px-4 rounded-xl font-bold text-sm flex items-center justify-center gap-2 shadow-lg transition-all active:scale-[0.98] ${
               copiedEffect
-                ? 'bg-[#049f43] text-white scale-[0.99] ring-2 ring-[#06C755]'
+                ? 'bg-emerald-500 text-white scale-100'
                 : 'bg-[#06C755] hover:bg-[#05b34c] text-white'
             }`}
-            type="button"
           >
-            <span className="material-symbols-outlined text-[24px]">
-              {copiedEffect ? 'done_all' : 'content_copy'}
+            <span className="material-symbols-outlined text-[20px]">
+              {copiedEffect ? 'check' : 'content_copy'}
             </span>
-            <span>
-              {copiedEffect ? 'คัดลอกข้อความสำเร็จแล้ว!' : 'คัดลอกข้อความลง LINE (คลิกเดียว)'}
-            </span>
+            <span>{copiedEffect ? 'คัดลอกข้อความเรียบร้อยแล้ว!' : 'คัดลอกข้อความส่งเข้า LINE'}</span>
           </button>
 
-          {/* Secondary Actions */}
+          {/* Secondary Actions Grid */}
           <div className="grid grid-cols-2 gap-2">
             <button
-              onClick={onOpenLine}
-              className="h-11 px-2.5 rounded-lg bg-[#363434] hover:bg-[#3a3939] text-[#e6e1e1] font-label-tactical text-xs font-semibold flex items-center justify-center gap-1.5 shadow-sm transition-colors border border-[#443837]"
               type="button"
+              onClick={onOpenLine}
+              className="py-2 px-3 rounded-lg bg-[#251517] hover:bg-[#341b1e] border border-[#3b1215] text-[#ffdad6] text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors"
             >
-              <span className="material-symbols-outlined text-[#06C755] text-[18px]">
-                send
-              </span>
+              <span className="material-symbols-outlined text-[16px] text-[#06C755]">chat</span>
               <span>เปิดแอป LINE</span>
             </button>
 
             <button
-              onClick={onPrintRunSheet}
-              className="h-11 px-2.5 rounded-lg bg-[#363434] hover:bg-[#3a3939] text-[#4cd7f6] font-label-tactical text-xs font-semibold flex items-center justify-center gap-1.5 shadow-sm transition-colors border border-[#443837]"
               type="button"
+              onClick={onDownloadPdf}
+              className="py-2 px-3 rounded-lg bg-[#0284c7]/20 hover:bg-[#0284c7]/30 border border-[#0284c7]/40 text-[#7dd3fc] text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors"
             >
-              <span className="material-symbols-outlined text-[18px]">print</span>
-              <span>พิมพ์ใบรายงาน EMS</span>
+              <span className="material-symbols-outlined text-[16px]">picture_as_pdf</span>
+              <span>ดาวน์โหลด PDF</span>
             </button>
           </div>
 
-          {/* Quick save button to save current incident to daily log */}
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={onPrintRunSheet}
+              className="py-2 px-3 rounded-lg bg-[#251517] hover:bg-[#341b1e] border border-[#3b1215] text-[#ffdad6] text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors"
+            >
+              <span className="material-symbols-outlined text-[16px] text-amber-400">print</span>
+              <span>พิมพ์ใบ Run Sheet A4</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={onNewReport}
+              className="py-2 px-3 rounded-lg bg-[#3b1215] hover:bg-[#521a1e] border border-[#ff5451]/50 text-[#ffb3ad] text-xs font-bold flex items-center justify-center gap-1.5 transition-colors"
+            >
+              <span className="material-symbols-outlined text-[16px] text-[#ff5451]">restart_alt</span>
+              <span>เริ่มเคสใหม่</span>
+            </button>
+          </div>
+
           <button
-            onClick={onSaveCaseToLog}
-            className="w-full h-9 rounded-lg bg-[#2b2a29] hover:bg-[#323030] text-[#ffb95f] hover:text-white font-label-tactical text-xs flex items-center justify-center gap-1.5 transition-colors border border-[#3e3433]"
             type="button"
+            onClick={onSaveCaseToLog}
+            className="w-full py-1.5 text-center text-xs text-[#e4beba] hover:text-white flex items-center justify-center gap-1 mt-0.5"
           >
-            <span className="material-symbols-outlined text-[16px]">bookmark_added</span>
-            <span>บันทึกเคสนี้เข้าสถิติเวรประจำวัน</span>
+            <span className="material-symbols-outlined text-[15px]">bookmark</span>
+            <span>บันทึกเข้าประวัติเคสประจำวัน</span>
           </button>
-        </div>
-      </div>
-
-      {/* Shift Live Counter Widget */}
-      <div className="rounded-xl bg-[#1c1b1b] border border-[#2e2423] p-4 shadow-md">
-        <div className="flex items-center justify-between mb-2">
-          <span className="font-label-tactical text-[11px] text-[#e4beba] uppercase flex items-center gap-1 font-semibold">
-            <span className="material-symbols-outlined text-[#ffb95f] text-[16px]">
-              analytics
-            </span>
-            สถิติเคสเวรวันนี้ (สภ.โพธิ์กลาง)
-          </span>
-          <span className="font-label-tactical text-xs text-[#4cd7f6] font-bold">
-            รวม {stats.total} เคส
-          </span>
-        </div>
-
-        <div className="grid grid-cols-3 gap-2 text-center">
-          <div className="p-2.5 rounded-lg bg-[#0f0e0e] border border-[#2e2423]">
-            <div className="font-headline-md text-xl md:text-2xl text-[#4cd7f6] font-bold tabular-nums">
-              {stats.illness}
-            </div>
-            <div className="font-label-tactical text-[11px] text-[#e4beba] mt-0.5">
-              ว.8 ป่วย
-            </div>
-          </div>
-
-          <div className="p-2.5 rounded-lg bg-[#0f0e0e] border border-[#2e2423]">
-            <div className="font-headline-md text-xl md:text-2xl text-[#ffb95f] font-bold tabular-nums">
-              {stats.accident}
-            </div>
-            <div className="font-label-tactical text-[11px] text-[#e4beba] mt-0.5">
-              ว.40 รถชน
-            </div>
-          </div>
-
-          <div className="p-2.5 rounded-lg bg-[#0f0e0e] border border-[#2e2423]">
-            <div className="font-headline-md text-xl md:text-2xl text-[#ff5451] font-bold tabular-nums">
-              {stats.cpr}
-            </div>
-            <div className="font-label-tactical text-[11px] text-[#e4beba] mt-0.5">
-              CPR วิกฤต
-            </div>
-          </div>
         </div>
       </div>
     </div>

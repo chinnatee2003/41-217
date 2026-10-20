@@ -1,297 +1,144 @@
-import React, { useState, useEffect } from 'react';
-import { TabType, ThemeMode } from '../types';
+import React from 'react';
+import { ThemeMode } from '../types';
 import { Hook31Logo } from './Hook31Logo';
-import { getLiveClockString } from '../utils/formatters';
+import { RADIO_FREQUENCY } from '../data/initialData';
 
 interface HeaderProps {
-  currentTab: TabType;
-  onTabChange: (tab: TabType) => void;
   theme: ThemeMode;
   onThemeChange: (theme: ThemeMode) => void;
-  onOpenShareModal: () => void;
+  onNewReport: () => void;
+  onOpenPreview: () => void;
+  onCopyText: () => void;
+  onDownloadPdf: () => void;
+  onPrintReport: () => void;
+  onOpenSettings: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
-  currentTab,
-  onTabChange,
   theme,
   onThemeChange,
-  onOpenShareModal,
+  onNewReport,
+  onOpenPreview,
+  onCopyText,
+  onDownloadPdf,
+  onPrintReport,
+  onOpenSettings,
 }) => {
-  const [clock, setClock] = useState(getLiveClockString());
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setClock(getLiveClockString());
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
-
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-[#141313]/90 backdrop-blur-md shadow-[0_1px_8px_rgba(0,0,0,0.6)] border-b border-[#2e2423]">
-      <div className="h-20 w-full px-4 md:px-6 flex items-center justify-between gap-3">
-        {/* Brand & Station Identity */}
-        <div className="flex items-center gap-3 min-w-0">
-          <Hook31Logo className="w-10 h-10 md:w-11 md:h-11 flex-shrink-0" />
+    <header className="fixed top-0 left-0 right-0 z-40 bg-[#160b0c]/95 border-b border-[#3b1215] shadow-lg backdrop-blur-md">
+      <div className="max-w-[1720px] mx-auto px-3 sm:px-5 py-2.5 flex flex-wrap items-center justify-between gap-2.5">
+        {/* Brand & Radio Frequency Identity */}
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="flex-shrink-0 relative">
+            <Hook31Logo className="w-10 h-10 sm:w-11 sm:h-11 drop-shadow-md" />
+          </div>
           <div className="flex flex-col truncate">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-label-tactical text-[11px] text-[#ffb3ad] font-bold uppercase tracking-wider">
-                มูลนิธิพุทธธรรม 31 นครราชสีมา (ฮุก 31)
-              </span>
-              <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-[#2b2a29] text-[#4cd7f6] font-label-tactical text-[11px]">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#4cd7f6] inline-block animate-pulse mr-1"></span>
-                ว.4 ONLINE
-              </span>
-              {/* Radio Communication Frequency 173.475 MHz */}
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-[#3b1212] border border-[#ff5451]/50 text-[#ffb3ad] font-label-tactical text-[11px] font-bold shadow-sm">
-                <span className="material-symbols-outlined text-[14px] text-[#ff5451] animate-pulse">radio</span>
-                <span className="text-[#fff]">173.475 MHz</span>
-                <span className="text-[#ffb3ad] text-[10px] hidden sm:inline">(ข่ายหลัก)</span>
-              </span>
+              <h1 className="font-headline-md text-base sm:text-lg font-bold text-white tracking-tight flex items-center gap-1.5 truncate">
+                <span>🚒</span>
+                <span>รายงาน ฮุก 31 นครราชสีมา</span>
+              </h1>
+              {/* Radio Frequency Badge: 173.475 MHz */}
+              <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#2d0f11] border border-[#ff5451]/60 text-[#ffb3ad] text-[11px] font-bold shadow-sm whitespace-nowrap">
+                <span className="material-symbols-outlined text-[13px] text-[#ff5451] animate-pulse">
+                  radio
+                </span>
+                <span>{RADIO_FREQUENCY}</span>
+              </div>
             </div>
-            <span className="font-headline-md text-[15px] md:text-[17px] text-[#e6e1e1] font-semibold tracking-tight truncate">
-              จุดข้าง สภ.โพธิ์กลาง | ศูนย์วิทยุ ฮุก 31 โคราช
-            </span>
+            <p className="text-[11px] text-[#e4beba] truncate">
+              ศูนย์วิทยุและจุดบริการกู้ชีพ-กู้ภัย • ระบบฟรี 100% ปลอดภัยในเบราว์เซอร์
+            </p>
           </div>
         </div>
 
-        {/* Navigation Tabs (Desktop) */}
-        <nav className="hidden xl:flex items-center gap-2">
+        {/* Action Buttons Toolbar (Desktop & Tablet) */}
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {/* สร้างรายงานใหม่ / เริ่มเคสใหม่ */}
           <button
-            onClick={() => onTabChange('report')}
-            className={`px-3 py-1.5 transition-colors font-headline-md font-bold text-sm rounded-lg flex items-center gap-1.5 ${
-              currentTab === 'report'
-                ? 'bg-[#ff5451] text-[#5c0008] shadow'
-                : 'text-[#e4beba] hover:bg-[#2b2a29] hover:text-[#e6e1e1]'
-            }`}
+            type="button"
+            onClick={onNewReport}
+            className="h-9 px-3 rounded-lg bg-[#3b1215] hover:bg-[#521a1e] text-[#ffdad6] border border-[#ff5451]/40 text-xs font-semibold flex items-center gap-1.5 transition-all active:scale-95 shadow-sm"
+            title="ล้างข้อมูลและเริ่มต้นเคสใหม่"
           >
-            <span>📋</span>
-            <span>บันทึกรายงาน ว.8</span>
-          </button>
-
-          <button
-            onClick={() => onTabChange('stats')}
-            className={`px-3 py-1.5 transition-colors font-headline-md font-semibold text-sm rounded-lg flex items-center gap-1.5 ${
-              currentTab === 'stats'
-                ? 'bg-[#ff5451] text-[#5c0008] shadow'
-                : 'text-[#e4beba] hover:bg-[#2b2a29] hover:text-[#e6e1e1]'
-            }`}
-          >
-            <span>📊</span>
-            <span>สถิติเคสประจำวัน</span>
-          </button>
-
-          <button
-            onClick={() => onTabChange('pwa')}
-            className={`px-3 py-1.5 transition-colors font-headline-md font-semibold text-sm rounded-lg flex items-center gap-1.5 ${
-              currentTab === 'pwa'
-                ? 'bg-[#ff5451] text-[#5c0008] shadow'
-                : 'text-[#e4beba] hover:bg-[#2b2a29] hover:text-[#e6e1e1]'
-            }`}
-          >
-            <span>📲</span>
-            <span>วิธีติดตั้งแอปลงเครื่อง (PWA)</span>
-          </button>
-
-          <button
-            onClick={onOpenShareModal}
-            className={`px-3 py-1.5 transition-colors font-headline-md font-semibold text-sm rounded-lg flex items-center gap-1.5 ${
-              currentTab === 'share'
-                ? 'bg-[#ff5451] text-[#5c0008] shadow'
-                : 'text-[#e4beba] hover:bg-[#2b2a29] hover:text-[#e6e1e1]'
-            }`}
-          >
-            <span>🔗</span>
-            <span>แชร์ระบบ (QR / LINE)</span>
-          </button>
-        </nav>
-
-        {/* Right Tools: Clock, Theme, Profile */}
-        <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
-          {/* Tactical UTC+7 Clock */}
-          <div className="hidden md:flex items-center bg-[#1c1b1b] border border-[#2e2423] px-3 py-1 rounded-lg">
-            <span className="font-label-tactical text-xs text-[#ffb95f] font-bold tracking-widest tabular-nums">
-              {clock}
+            <span className="material-symbols-outlined text-[16px] text-[#ff5451]">
+              restart_alt
             </span>
-          </div>
+            <span className="hidden sm:inline">เริ่มเคสใหม่</span>
+            <span className="sm:hidden">เคสใหม่</span>
+          </button>
 
-          {/* Primary Day/Night Mode Switcher */}
-          <div className="hidden sm:flex items-center bg-[#1c1b1b] border border-[#2e2423] rounded-lg p-1 gap-1 shadow-sm">
-            <button
-              onClick={() => onThemeChange('day')}
-              className={`px-2.5 py-1 rounded-md font-headline-md text-xs font-bold flex items-center gap-1.5 transition-all ${
-                theme === 'day'
-                  ? 'bg-amber-400 text-slate-900 shadow-md ring-1 ring-amber-500'
-                  : 'text-[#e4beba] hover:text-white hover:bg-[#2b2a29]'
-              }`}
-              title="สลับเป็นโหมดกลางวัน (สว่าง สบายตา อ่านง่าย)"
-              type="button"
-            >
-              <span>☀️</span>
-              <span>กลางวัน</span>
-            </button>
-
-            <button
-              onClick={() => onThemeChange(theme === 'day' ? 'red' : theme)}
-              className={`px-2.5 py-1 rounded-md font-headline-md text-xs font-bold flex items-center gap-1.5 transition-all ${
-                theme !== 'day'
-                  ? 'bg-[#ff5451] text-[#5c0008] shadow-md ring-1 ring-[#ff8885]'
-                  : 'text-[#e4beba] hover:text-white hover:bg-[#2b2a29]'
-              }`}
-              title="สลับเป็นโหมดกลางคืน (ถนอมสายตา)"
-              type="button"
-            >
-              <span>🌙</span>
-              <span>กลางคืน</span>
-            </button>
-
-            {/* Tactical Sub-theme selector when in Night Mode */}
-            {theme !== 'day' && (
-              <div className="flex items-center pl-1 border-l border-[#2e2423] gap-1">
-                <button
-                  onClick={() => onThemeChange('red')}
-                  className={`px-1.5 py-0.5 rounded font-label-tactical text-[10px] ${
-                    theme === 'red' ? 'bg-[#ff5451] text-[#5c0008] font-bold' : 'text-[#e4beba]'
-                  }`}
-                  title="แสงสีแดง (Night Red)"
-                  type="button"
-                >
-                  🔴 RED
-                </button>
-                <button
-                  onClick={() => onThemeChange('hq')}
-                  className={`px-1.5 py-0.5 rounded font-label-tactical text-[10px] ${
-                    theme === 'hq' ? 'bg-[#2b2a29] text-[#4cd7f6] font-bold' : 'text-[#e4beba]'
-                  }`}
-                  title="ศูนย์ HQ (Night Slate)"
-                  type="button"
-                >
-                  🏢 HQ
-                </button>
-                <button
-                  onClick={() => onThemeChange('contrast')}
-                  className={`px-1.5 py-0.5 rounded font-label-tactical text-[10px] ${
-                    theme === 'contrast' ? 'bg-white text-black font-bold' : 'text-[#e4beba]'
-                  }`}
-                  title="คอนทราสต์จัด (OLED)"
-                  type="button"
-                >
-                  ⚡ OLED
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* User profile / Call sign */}
-          <div
-            className="w-8 h-8 rounded-full bg-[#ffb3ad] flex items-center justify-center flex-shrink-0 shadow cursor-pointer text-[#68000a] font-bold text-xs"
-            title="พลขับ/เจ้าหน้าที่ ว.4 ประจำเวร"
-          >
-            <span className="material-symbols-outlined text-[18px]">person</span>
-          </div>
-
-          {/* Mobile hamburger */}
+          {/* ดูตัวอย่างรายงาน */}
           <button
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="xl:hidden p-1.5 rounded-lg bg-[#211f1f] text-[#e4beba] hover:text-white"
-            aria-label="Toggle menu"
+            type="button"
+            onClick={onOpenPreview}
+            className="h-9 px-3 rounded-lg bg-[#1e293b] hover:bg-[#334155] text-slate-100 border border-slate-700 text-xs font-semibold flex items-center gap-1.5 transition-all active:scale-95 shadow-sm"
+            title="ดูตัวอย่างรายงานฉบับสมบูรณ์"
           >
-            <span className="material-symbols-outlined text-[20px]">
-              {mobileMenuOpen ? 'close' : 'menu'}
+            <span className="material-symbols-outlined text-[16px] text-sky-400">
+              visibility
             </span>
+            <span className="hidden md:inline">ดูตัวอย่างรายงาน</span>
+            <span className="md:hidden">ตัวอย่าง</span>
+          </button>
+
+          {/* คัดลอกข้อความ */}
+          <button
+            type="button"
+            onClick={onCopyText}
+            className="h-9 px-3.5 rounded-lg bg-[#06C755] hover:bg-[#05b34c] text-white text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95 shadow-sm"
+            title="คัดลอกข้อความสำหรับส่งเข้า LINE"
+          >
+            <span className="material-symbols-outlined text-[16px]">content_copy</span>
+            <span className="hidden sm:inline">คัดลอกข้อความ</span>
+            <span className="sm:hidden">คัดลอก</span>
+          </button>
+
+          {/* ดาวน์โหลด PDF */}
+          <button
+            type="button"
+            onClick={onDownloadPdf}
+            className="h-9 px-3 rounded-lg bg-[#0284c7] hover:bg-[#0369a1] text-white text-xs font-semibold flex items-center gap-1.5 transition-all active:scale-95 shadow-sm"
+            title="ดาวน์โหลดหรือบันทึกเป็นไฟล์ PDF"
+          >
+            <span className="material-symbols-outlined text-[16px]">picture_as_pdf</span>
+            <span className="hidden md:inline">ดาวน์โหลด PDF</span>
+            <span className="md:hidden">PDF</span>
+          </button>
+
+          {/* พิมพ์รายงาน */}
+          <button
+            type="button"
+            onClick={onPrintReport}
+            className="h-9 px-3 rounded-lg bg-[#2b2a29] hover:bg-[#383635] text-[#e6e1e1] border border-[#3e3433] text-xs font-semibold flex items-center gap-1.5 transition-all active:scale-95 shadow-sm"
+            title="พิมพ์รายงานใบนำส่ง Run Sheet A4"
+          >
+            <span className="material-symbols-outlined text-[16px] text-amber-400">print</span>
+            <span className="hidden lg:inline">พิมพ์รายงาน</span>
+          </button>
+
+          {/* ตั้งค่ารายการ */}
+          <button
+            type="button"
+            onClick={onOpenSettings}
+            className="h-9 px-2.5 rounded-lg bg-[#2b2a29] hover:bg-[#383635] text-[#e4beba] hover:text-white border border-[#3e3433] text-xs font-semibold flex items-center gap-1 transition-all active:scale-95 shadow-sm"
+            title="ตั้งค่าจุดบริการ รถพยาบาล และหัวข้อด่วน"
+          >
+            <span className="material-symbols-outlined text-[16px]">settings</span>
+            <span className="hidden xl:inline">ตั้งค่ารายการ</span>
+          </button>
+
+          {/* Theme switcher */}
+          <button
+            type="button"
+            onClick={() => onThemeChange(theme === 'day' ? 'red' : 'day')}
+            className="h-9 px-2.5 rounded-lg bg-[#211f1f] border border-[#3e3433] text-xs font-semibold flex items-center gap-1 text-[#e6e1e1] hover:bg-[#2b2a29] transition-colors"
+            title="สลับโหมดกลางวัน / แสงแดงกลางคืน"
+          >
+            <span className="text-[15px]">{theme === 'day' ? '☀️' : '🔴'}</span>
           </button>
         </div>
       </div>
-
-      {/* Mobile Drawer Menu */}
-      {mobileMenuOpen && (
-        <div className="xl:hidden bg-[#1c1b1b] border-t border-[#2e2423] p-4 flex flex-col gap-2">
-          <div className="flex items-center justify-between pb-2 border-b border-[#2e2423]">
-            <span className="font-label-tactical text-xs text-[#ffb95f] font-bold">
-              {clock}
-            </span>
-            <div className="flex gap-1">
-              <button
-                onClick={() => onThemeChange('day')}
-                className={`px-2 py-0.5 rounded text-[11px] font-label-tactical font-bold ${
-                  theme === 'day' ? 'bg-amber-400 text-slate-900' : 'text-zinc-400'
-                }`}
-              >
-                DAY
-              </button>
-              <button
-                onClick={() => onThemeChange('hq')}
-                className={`px-2 py-0.5 rounded text-[11px] font-label-tactical ${
-                  theme === 'hq' ? 'bg-[#2b2a29] text-[#4cd7f6]' : 'text-zinc-400'
-                }`}
-              >
-                HQ
-              </button>
-              <button
-                onClick={() => onThemeChange('red')}
-                className={`px-2 py-0.5 rounded text-[11px] font-label-tactical ${
-                  theme === 'red' ? 'bg-[#ff5451] text-[#5c0008]' : 'text-zinc-400'
-                }`}
-              >
-                RED
-              </button>
-              <button
-                onClick={() => onThemeChange('contrast')}
-                className={`px-2 py-0.5 rounded text-[11px] font-label-tactical ${
-                  theme === 'contrast' ? 'bg-white text-black' : 'text-zinc-400'
-                }`}
-              >
-                OLED
-              </button>
-            </div>
-          </div>
-          <button
-            onClick={() => {
-              onTabChange('report');
-              setMobileMenuOpen(false);
-            }}
-            className={`w-full text-left px-3 py-2 rounded-lg font-headline-md font-semibold text-sm ${
-              currentTab === 'report' ? 'bg-[#ff5451] text-[#5c0008]' : 'text-white'
-            }`}
-          >
-            📋 บันทึกรายงาน ว.8
-          </button>
-          <button
-            onClick={() => {
-              onTabChange('stats');
-              setMobileMenuOpen(false);
-            }}
-            className={`w-full text-left px-3 py-2 rounded-lg font-headline-md font-semibold text-sm ${
-              currentTab === 'stats' ? 'bg-[#ff5451] text-[#5c0008]' : 'text-white'
-            }`}
-          >
-            📊 สถิติเคสประจำวัน
-          </button>
-          <button
-            onClick={() => {
-              onTabChange('pwa');
-              setMobileMenuOpen(false);
-            }}
-            className={`w-full text-left px-3 py-2 rounded-lg font-headline-md font-semibold text-sm ${
-              currentTab === 'pwa' ? 'bg-[#ff5451] text-[#5c0008]' : 'text-white'
-            }`}
-          >
-            📲 วิธีติดตั้งแอปลงเครื่อง (PWA)
-          </button>
-          <button
-            onClick={() => {
-              onOpenShareModal();
-              setMobileMenuOpen(false);
-            }}
-            className={`w-full text-left px-3 py-2 rounded-lg font-headline-md font-semibold text-sm ${
-              currentTab === 'share' ? 'bg-[#ff5451] text-[#5c0008]' : 'text-white'
-            }`}
-          >
-            🔗 แชร์ระบบ (QR / LINE)
-          </button>
-        </div>
-      )}
     </header>
   );
 };

@@ -1,29 +1,46 @@
 import React, { useState } from 'react';
-import { IncidentReport, VitalSigns } from '../types';
-import { HOSPITALS_KORAT, AMBULANCE_UNITS } from '../data/initialData';
-import { getLiveTimeString } from '../utils/formatters';
+import { IncidentReport, SectionVisibility, VehicleInfo, VitalSigns } from '../types';
+import {
+  HOSPITALS_KORAT,
+  AMBULANCE_UNITS,
+  SERVICE_STATIONS,
+  POLICE_STATIONS,
+  VEHICLE_TYPES,
+} from '../data/initialData';
+import { getLiveTimeString, getTodayThaiDate } from '../utils/formatters';
 
 interface IncidentFormProps {
   report: IncidentReport;
   onChange: (updated: IncidentReport) => void;
-  openSections: {
-    sec1: boolean;
-    sec2: boolean;
-    sec3: boolean;
-    sec4: boolean;
-  };
-  onToggleSection: (key: 'sec1' | 'sec2' | 'sec3' | 'sec4') => void;
+  visibility: SectionVisibility;
+  onToggleVisibility: (key: keyof SectionVisibility) => void;
+  onShowAllSections: () => void;
+  onHideOptionalSections: () => void;
   onShowToast: (title: string, desc: string, icon?: string) => void;
 }
 
 export const IncidentForm: React.FC<IncidentFormProps> = ({
   report,
   onChange,
-  openSections,
-  onToggleSection,
+  visibility,
+  onToggleVisibility,
+  onShowAllSections,
+  onHideOptionalSections,
   onShowToast,
 }) => {
-  const [showExtraVitals, setShowExtraVitals] = useState(false);
+  // Collapsible section accordions state
+  const [collapsed, setCollapsed] = useState<{ [key: string]: boolean }>({
+    secEvent: false,
+    secLocation: false,
+    secVehicles: false,
+    secPatient: false,
+    secVitals: false,
+    secDestination: false,
+  });
+
+  const toggleAccordion = (key: string) => {
+    setCollapsed((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
 
   const updateField = <K extends keyof IncidentReport>(field: K, value: IncidentReport[K]) => {
     onChange({
@@ -42,849 +59,953 @@ export const IncidentForm: React.FC<IncidentFormProps> = ({
     });
   };
 
-  const handleLiveTime = () => {
-    const liveTime = getLiveTimeString();
-    updateField('timestamp', liveTime);
-    onShowToast('อัปเดตเวลาสดแล้ว', `ดึงเวลาปัจจุบัน ${liveTime} เรียบร้อย`, 'schedule');
+  // Quick Helpers
+  const handleSetCurrentTime = () => {
+    const t = getLiveTimeString();
+    updateField('timestamp', t);
+    onShowToast('ใส่วันและเวลาแล้ว', `บันทึกเวลา ${t} เรียบร้อย`, 'schedule');
   };
 
-  const handleAppendSymptom = (tag: string) => {
-    const current = report.symptoms.trim();
-    if (!current || current === '-') {
-      updateField('symptoms', `มีอาการ ${tag}`);
+  const handleSetTodayDate = () => {
+    const d = getTodayThaiDate();
+    updateField('dateStr', d);
+    onShowToast('ใส่วันที่แล้ว', `ประจำวันที่ ${d}`, 'today');
+  };
+
+  const handleAppendSymptom = (text: string) => {
+    const cur = report.symptoms.trim();
+    if (!cur) {
+      updateField('symptoms', text);
     } else {
-      updateField('symptoms', `${current} ${tag}`);
+      updateField('symptoms', `${cur} ${text}`);
     }
   };
 
-  // Browser Geolocation API to auto-fill location
+  // Vehicle Management for Accidents
+  const handleAddVehicle = () => {
+    const nextOrder = (report.vehicles?.length || 0) + 1;
+    const newVeh: VehicleInfo = {
+      id: `veh-${Date.now()}-${nextOrder}`,
+      order: nextOrder,
+      type: nextOrder === 1 ? 'รถจักรยานยนต์ (จยย.)' : 'รถยนต์เก๋ง',
+      brandModel: '',
+      color: '',
+      plateNumber: '',
+      driverName: '',
+      damageDesc: '',
+    };
+    updateField('vehicles', [...(report.vehicles || []), newVeh]);
+    onShowToast(`เพิ่มรถคันที่ ${nextOrder} แล้ว`, 'กรอกข้อมูลยี่ห้อ ทะเบียน และผู้ขับขี่', 'directions_car');
+  };
+
+  const handleUpdateVehicle = (index: number, updated: Partial<VehicleInfo>) => {
+    const list = [...(report.vehicles || [])];
+    list[index] = { ...list[index], ...updated };
+    updateField('vehicles', list);
+  };
+
+  const handleRemoveVehicle = (index: number) => {
+    const list = (report.vehicles || []).filter((_, i) => i !== index);
+    // Re-index order
+    const reordered = list.map((v, i) => ({ ...v, order: i + 1 }));
+    updateField('vehicles', reordered);
+    onShowToast('ลบรายการรถแล้ว', 'ปรับลำดับรถเรียบร้อย', 'delete');
+  };
+
+  // GPS Geolocation
   const handleGetCurrentLocation = () => {
     if (!navigator.geolocation) {
       onShowToast('ไม่รองรับ GPS', 'เบราว์เซอร์ไม่รองรับ Geolocation', 'warning');
       return;
     }
-    onShowToast('กำลังตรวจหาพิกัด GPS...', 'ค้นหาตำแหน่งดาวเทียมปัจจุบัน', 'satellite_alt');
+    onShowToast('กำลังดึงพิกัด GPS...', 'ค้นหาตำแหน่งดาวเทียมปัจจุบัน', 'satellite_alt');
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const coords = `พิกัด GPS: ${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`;
-        const currentLoc = report.location.trim();
-        const updated = currentLoc ? `${currentLoc} (${coords})` : coords;
+        const cur = report.location.trim();
+        const updated = cur ? `${cur} (${coords})` : coords;
         updateField('location', updated);
-        onShowToast('ระบุพิกัดสำเร็จ', coords, 'my_location');
+        onShowToast('ดึงพิกัดสำเร็จ', coords, 'my_location');
       },
       (err) => {
-        onShowToast('ระบุพิกัดไม่สำเร็จ', err.message || 'โปรดอนุญาตสิทธิ์เข้าถึงตำแหน่ง', 'error');
+        onShowToast('ดึงพิกัดไม่สำเร็จ', err.message || 'โปรดอนุญาตสิทธิ์เข้าถึงตำแหน่ง', 'error');
       },
       { timeout: 10000, enableHighAccuracy: true }
     );
   };
 
+  // Switch Toggle Helper Component
+  const RenderVisibilityToggle = ({
+    sectionKey,
+    label,
+  }: {
+    sectionKey: keyof SectionVisibility;
+    label: string;
+  }) => {
+    const isVisible = visibility[sectionKey];
+    return (
+      <div className="flex items-center justify-between gap-2 py-1 px-2 rounded-lg bg-[#181112] border border-[#2e1719] mb-2">
+        <span className="text-xs font-medium text-[#e4beba] flex items-center gap-1.5">
+          <span className="material-symbols-outlined text-[15px] text-[#ff8885]">toggle_on</span>
+          <span>{label}</span>
+        </span>
+        <button
+          type="button"
+          onClick={() => onToggleVisibility(sectionKey)}
+          className={`px-2.5 py-0.5 rounded text-[11px] font-bold transition-all flex items-center gap-1 ${
+            isVisible
+              ? 'bg-[#06C755]/20 text-[#06C755] border border-[#06C755]/50'
+              : 'bg-[#2b2a29] text-neutral-400 border border-[#3e3433]'
+          }`}
+          title="คลิกเพื่อสลับการแสดงผลในรายงาน"
+        >
+          <span
+            className={`w-1.5 h-1.5 rounded-full ${
+              isVisible ? 'bg-[#06C755] animate-pulse' : 'bg-neutral-500'
+            }`}
+          ></span>
+          <span>{isVisible ? 'แสดงในรายงาน' : 'ไม่แสดงในรายงาน'}</span>
+        </button>
+      </div>
+    );
+  };
+
   return (
-    <div className="flex flex-col gap-4">
-      {/* SECTION MASTER CONTROL BAR: Quick collapse/expand controls */}
-      <div className="p-3 rounded-xl bg-[#211f1f] border border-[#2e2423] flex flex-wrap items-center justify-between gap-2.5 shadow-sm">
+    <div className="flex flex-col gap-4 pb-20 md:pb-6">
+      {/* GLOBAL SECTION VISIBILITY MANAGEMENT BAR */}
+      <div className="p-3 rounded-xl bg-[#1c1214] border border-[#3b1215] flex flex-wrap items-center justify-between gap-2.5 shadow-sm">
         <div className="flex items-center gap-2">
-          <span className="material-symbols-outlined text-[#ffb3ad] text-[20px]">
+          <span className="material-symbols-outlined text-[#ff8885] text-[20px]">
             tune
           </span>
-          <span className="font-headline-md text-xs font-bold text-[#e6e1e1]">
-            ตัวเลือกปิด/เปิดหัวข้อ (Section Controls):
+          <div>
+            <span className="text-xs font-bold text-white block">
+              ระบบเปิด–ปิดการแสดงผลหัวข้อ (Section Controls)
+            </span>
+            <span className="text-[11px] text-[#e4beba]">
+              หัวข้อที่ปิดจะไม่แสดงในข้อความ LINE และ PDF ทันที (ข้อมูลไม่สูญหาย)
+            </span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={onShowAllSections}
+            className="h-8 px-2.5 rounded-lg bg-[#2e1719] hover:bg-[#451e22] text-[#ffdad6] border border-[#ff5451]/30 text-xs font-semibold flex items-center gap-1 transition-all active:scale-95"
+            title="แสดงทุกหัวข้อทั้งหมดในรายงาน"
+          >
+            <span className="material-symbols-outlined text-[15px] text-[#06C755]">check_circle</span>
+            <span>แสดงทุกหัวข้อ</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={onHideOptionalSections}
+            className="h-8 px-2.5 rounded-lg bg-[#211f1f] hover:bg-[#2b2a29] text-[#e4beba] border border-[#3e3433] text-xs font-semibold flex items-center gap-1 transition-all active:scale-95"
+            title="ซ่อนหัวข้อที่ไม่จำเป็น (เช่น ท้องที่ตำรวจ, ร้อยเวร, Vital Signs)"
+          >
+            <span className="material-symbols-outlined text-[15px] text-amber-400">visibility_off</span>
+            <span>ซ่อนหัวข้อที่ไม่จำเป็น</span>
+          </button>
+        </div>
+      </div>
+
+      {/* CARD 1: ข้อมูลเหตุการณ์ และจุดบริการ (INCIDENT OVERVIEW) */}
+      <div className="rounded-xl bg-[#191415] border border-[#361a1d] shadow-md overflow-hidden">
+        <div
+          onClick={() => toggleAccordion('secEvent')}
+          className="px-4 py-3 bg-[#221315] border-b border-[#361a1d] flex items-center justify-between cursor-pointer select-none"
+        >
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-[#ff5451] text-[20px]">
+              emergency
+            </span>
+            <span className="font-headline-md text-sm font-bold text-white">
+              ส่วนที่ 1: ข้อมูลเหตุการณ์ & วันเวลา
+            </span>
+          </div>
+          <span className="material-symbols-outlined text-[#e4beba] text-[20px]">
+            {collapsed.secEvent ? 'expand_more' : 'expand_less'}
           </span>
         </div>
 
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <button
-            type="button"
-            onClick={() => onToggleSection('sec1')}
-            className={`px-2.5 py-1 rounded-lg text-xs font-headline-md font-bold transition-all flex items-center gap-1 border ${
-              openSections.sec1
-                ? 'bg-[#93000a] text-[#ffdad6] border-[#c0392b]'
-                : 'bg-[#2b2a29] text-[#e4beba] border-[#3e3433] hover:text-white'
-            }`}
-            title="คลิกเพื่อเปิด/ปิด PART 01"
-          >
-            <span>{openSections.sec1 ? '✕ ปิด' : '▼ เปิด'}</span>
-            <span>PART 01</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => onToggleSection('sec2')}
-            className={`px-2.5 py-1 rounded-lg text-xs font-headline-md font-bold transition-all flex items-center gap-1 border ${
-              openSections.sec2
-                ? 'bg-[#93000a] text-[#ffdad6] border-[#c0392b]'
-                : 'bg-[#2b2a29] text-[#e4beba] border-[#3e3433] hover:text-white'
-            }`}
-            title="คลิกเพื่อเปิด/ปิด PART 02"
-          >
-            <span>{openSections.sec2 ? '✕ ปิด' : '▼ เปิด'}</span>
-            <span>PART 02</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => onToggleSection('sec3')}
-            className={`px-2.5 py-1 rounded-lg text-xs font-headline-md font-bold transition-all flex items-center gap-1 border ${
-              openSections.sec3
-                ? 'bg-[#93000a] text-[#ffdad6] border-[#c0392b]'
-                : 'bg-[#2b2a29] text-[#e4beba] border-[#3e3433] hover:text-white'
-            }`}
-            title="คลิกเพื่อเปิด/ปิด PART 03"
-          >
-            <span>{openSections.sec3 ? '✕ ปิด' : '▼ เปิด'}</span>
-            <span>PART 03 (ผู้ป่วย)</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => onToggleSection('sec4')}
-            className={`px-2.5 py-1 rounded-lg text-xs font-headline-md font-bold transition-all flex items-center gap-1 border ${
-              openSections.sec4
-                ? 'bg-[#93000a] text-[#ffdad6] border-[#c0392b]'
-                : 'bg-[#2b2a29] text-[#e4beba] border-[#3e3433] hover:text-white'
-            }`}
-            title="คลิกเพื่อเปิด/ปิด PART 04"
-          >
-            <span>{openSections.sec4 ? '✕ ปิด' : '▼ เปิด'}</span>
-            <span>PART 04</span>
-          </button>
-        </div>
-      </div>
-
-      {/* SECTION 1: Station & Dispatch Timing */}
-      <div className="accordion-item rounded-xl bg-[#1c1b1b] border border-[#2e2423] shadow-sm overflow-hidden transition-all duration-200">
-        <div
-          className="cursor-pointer px-4 md:px-5 py-3.5 bg-[#211f1f] border-b border-[#2e2423] flex items-center justify-between select-none hover:bg-[#252323] transition-colors"
-          onClick={() => onToggleSection('sec1')}
-        >
-          <div className="flex items-center gap-2.5">
-            <span className="w-2 h-5 rounded-full bg-[#ffb3ad] inline-block"></span>
-            <span className="font-label-tactical text-[11px] text-[#ffb3ad] font-bold uppercase tracking-widest">
-              PART 01
-            </span>
-            <h3 className="font-headline-md text-base md:text-lg text-[#e6e1e1] font-semibold tracking-tight">
-              ข้อมูลจุดตรวจการณ์ & เวลาออกเหตุ
-            </h3>
-            <span className="hidden sm:inline-flex px-1.5 py-0.5 rounded bg-[#2b2a29] text-[#e4beba] font-label-tactical text-[11px]">
-              3 ฟิลด์
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onToggleSection('sec1');
-              }}
-              className={`px-3 py-1.5 rounded-lg font-headline-md text-xs font-bold flex items-center gap-1.5 transition-all border shadow-sm ${
-                openSections.sec1
-                  ? 'bg-[#93000a] hover:bg-[#b91a24] text-[#ffdad6] border-[#c0392b]'
-                  : 'bg-[#ffb3ad] hover:bg-[#ff8885] text-[#5c0008] border-[#ffb3ad]'
-              }`}
-            >
-              <span className="material-symbols-outlined text-[16px]">
-                {openSections.sec1 ? 'close' : 'expand_more'}
-              </span>
-              <span>{openSections.sec1 ? '✕ ปิดหัวข้อนี้' : '▼ เปิดหัวข้อนี้'}</span>
-            </button>
-          </div>
-        </div>
-
-        {openSections.sec1 && (
-          <div className="p-4 md:p-5 space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-3 md:gap-4">
-              <div className="md:col-span-6 flex flex-col gap-1">
-                <label className="font-label-tactical text-[11px] text-[#e4beba] font-semibold uppercase">
-                  จุดตรวจการณ์ / สังกัด
-                </label>
-                <div className="h-12 px-3 rounded-lg bg-[#0f0e0e] border border-[#2e2423] text-[#e6e1e1] flex items-center font-body-md text-sm shadow-inner focus-within:border-[#ffb3ad]">
-                  <span className="material-symbols-outlined text-[#ffb3ad] text-[18px] mr-2">
-                    location_on
-                  </span>
-                  <input
-                    className="w-full bg-transparent text-[#e6e1e1] focus:outline-none font-body-md text-sm"
-                    value={report.station}
-                    onChange={(e) => updateField('station', e.target.value)}
-                    type="text"
-                    placeholder="ระบุจุดตรวจการณ์"
-                  />
-                </div>
-              </div>
-
-              <div className="md:col-span-3 flex flex-col gap-1">
-                <label className="font-label-tactical text-[11px] text-[#e4beba] font-semibold uppercase">
-                  ลำดับเคสประจำวัน
-                </label>
-                <div className="h-12 px-3 rounded-lg bg-[#0f0e0e] border border-[#2e2423] text-[#e6e1e1] flex items-center font-label-tactical text-sm shadow-inner focus-within:border-[#ffb95f]">
-                  <span className="text-[#ffb95f] font-bold mr-1">#</span>
-                  <input
-                    className="w-full bg-transparent text-[#ffb95f] focus:outline-none font-bold font-label-tactical"
-                    value={report.caseId}
-                    onChange={(e) => updateField('caseId', e.target.value)}
-                    type="text"
-                    placeholder="เคสที่ ..."
-                  />
-                </div>
-              </div>
-
-              <div className="md:col-span-3 flex flex-col gap-1">
-                <div className="flex items-center justify-between">
-                  <label className="font-label-tactical text-[11px] text-[#e4beba] font-semibold uppercase">
-                    เวลา ว.4
-                  </label>
-                  <button
-                    onClick={handleLiveTime}
-                    className="text-[#ffb3ad] hover:text-white font-label-tactical text-[11px] flex items-center gap-0.5 transition-colors"
-                    type="button"
-                  >
-                    <span className="material-symbols-outlined text-[13px]">timer</span>
-                    ดึงสด
-                  </button>
-                </div>
-                <div className="h-12 px-3 rounded-lg bg-[#0f0e0e] border border-[#2e2423] text-[#e6e1e1] flex items-center font-label-tactical text-sm shadow-inner focus-within:border-[#4cd7f6]">
-                  <input
-                    className="w-full bg-transparent text-[#4cd7f6] focus:outline-none font-bold font-label-tactical"
-                    value={report.timestamp}
-                    onChange={(e) => updateField('timestamp', e.target.value)}
-                    type="text"
-                  />
-                </div>
-              </div>
+        {!collapsed.secEvent && (
+          <div className="p-4 space-y-4">
+            {/* Toggles for Section 1 */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+              <RenderVisibilityToggle sectionKey="station" label="จุดบริการ" />
+              <RenderVisibilityToggle sectionKey="dateTime" label="วันและเวลา" />
+              <RenderVisibilityToggle sectionKey="caseId" label="เลขเคส" />
+              <RenderVisibilityToggle sectionKey="unit" label="รถพยาบาล/กู้ชีพ" />
+              <RenderVisibilityToggle sectionKey="incidentType" label="ประเภทเหตุการณ์" />
+              <RenderVisibilityToggle sectionKey="symptoms" label="อาการ/เหตุการณ์" />
             </div>
 
-            {/* Bottom Quick Close Button for PART 01 */}
-            <div className="pt-2 border-t border-[#2e2423] flex items-center justify-between">
-              <span className="text-[11px] font-label-tactical text-[#e4beba]">
-                PART 01 เรียบร้อยแล้ว
-              </span>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => onToggleSection('sec1')}
-                  className="h-8 px-3 rounded-lg bg-[#2b2a29] hover:bg-[#363434] text-[#e6e1e1] font-label-tactical text-[11px] font-semibold flex items-center gap-1 border border-[#3e3433] transition-colors"
-                >
-                  <span className="material-symbols-outlined text-[15px]">unfold_less</span>
-                  <span>พับปิดหัวข้อนี้</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    onToggleSection('sec1');
-                    if (!openSections.sec2) onToggleSection('sec2');
-                  }}
-                  className="h-8 px-3 rounded-lg bg-[#ffb95f]/20 hover:bg-[#ffb95f] text-[#ffb95f] hover:text-[#472a00] font-label-tactical text-[11px] font-bold flex items-center gap-1 border border-[#ffb95f]/40 transition-colors"
-                >
-                  <span>ถัดไป PART 02</span>
-                  <span className="material-symbols-outlined text-[15px]">arrow_downward</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* SECTION 2: Ambulance & Incident Scene */}
-      <div className="accordion-item rounded-xl bg-[#1c1b1b] border border-[#2e2423] shadow-sm overflow-hidden transition-all duration-200">
-        <div
-          className="cursor-pointer px-4 md:px-5 py-3.5 bg-[#211f1f] border-b border-[#2e2423] flex items-center justify-between select-none hover:bg-[#252323] transition-colors"
-          onClick={() => onToggleSection('sec2')}
-        >
-          <div className="flex items-center gap-2.5">
-            <span className="w-2 h-5 rounded-full bg-[#ffb95f] inline-block"></span>
-            <span className="font-label-tactical text-[11px] text-[#ffb95f] font-bold uppercase tracking-widest">
-              PART 02
-            </span>
-            <h3 className="font-headline-md text-base md:text-lg text-[#e6e1e1] font-semibold tracking-tight">
-              ข้อมูลรถพยาบาล & สถานที่เกิดเหตุ
-            </h3>
-            <span className="hidden sm:inline-flex px-1.5 py-0.5 rounded bg-[#2b2a29] text-[#e4beba] font-label-tactical text-[11px]">
-              3 ฟิลด์
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onToggleSection('sec2');
-              }}
-              className={`px-3 py-1.5 rounded-lg font-headline-md text-xs font-bold flex items-center gap-1.5 transition-all border shadow-sm ${
-                openSections.sec2
-                  ? 'bg-[#93000a] hover:bg-[#b91a24] text-[#ffdad6] border-[#c0392b]'
-                  : 'bg-[#ffb95f] hover:bg-[#e09e3a] text-[#472a00] border-[#ffb95f]'
-              }`}
-            >
-              <span className="material-symbols-outlined text-[16px]">
-                {openSections.sec2 ? 'close' : 'expand_more'}
-              </span>
-              <span>{openSections.sec2 ? '✕ ปิดหัวข้อนี้' : '▼ เปิดหัวข้อนี้'}</span>
-            </button>
-          </div>
-        </div>
-
-        {openSections.sec2 && (
-          <div className="p-4 md:p-5 space-y-3.5">
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-3 md:gap-4">
-              <div className="md:col-span-4 flex flex-col gap-1">
-                <label className="font-label-tactical text-[11px] text-[#e4beba] font-semibold uppercase">
-                  รหัสรถพยาบาลออกเหตุ
-                </label>
-                <div className="h-12 px-3 rounded-lg bg-[#0f0e0e] border border-[#2e2423] text-[#e6e1e1] flex items-center shadow-inner focus-within:border-[#ffb95f]">
-                  <span className="material-symbols-outlined text-[#ffb95f] text-[18px] mr-2">
-                    ambulance
-                  </span>
-                  <input
-                    className="w-full bg-transparent text-[#e6e1e1] focus:outline-none font-body-md text-sm"
-                    value={report.unit}
-                    onChange={(e) => updateField('unit', e.target.value)}
-                    type="text"
-                    list="ambulance-list"
-                  />
-                  <datalist id="ambulance-list">
-                    {AMBULANCE_UNITS.map((u) => (
-                      <option key={u} value={u} />
-                    ))}
-                  </datalist>
-                </div>
-              </div>
-
-              <div className="md:col-span-8 flex flex-col gap-1">
-                <div className="flex items-center justify-between">
-                  <label className="font-label-tactical text-[11px] text-[#e4beba] font-semibold uppercase">
-                    อาการเบื้องต้นที่รับแจ้ง
-                  </label>
-                  <span className="font-label-tactical text-[11px] text-[#4cd7f6]">
-                    คลิกแท็กด่วนด้านล่าง
-                  </span>
-                </div>
-                <div className="h-12 px-3 rounded-lg bg-[#0f0e0e] border border-[#2e2423] text-[#e6e1e1] flex items-center shadow-inner focus-within:border-[#ff5451]">
-                  <span className="material-symbols-outlined text-[#ff5451] text-[18px] mr-2">
-                    emergency
-                  </span>
-                  <input
-                    className="w-full bg-transparent text-[#e6e1e1] focus:outline-none font-body-md text-sm font-medium"
-                    value={report.symptoms}
-                    onChange={(e) => updateField('symptoms', e.target.value)}
-                    type="text"
-                    placeholder="ระบุอาการ..."
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Quick symptom tags */}
-            <div className="flex items-center gap-1.5 flex-wrap pt-1">
-              <span className="font-label-tactical text-[11px] text-[#e4beba] mr-1">
-                แท็กด่วน:
-              </span>
-              <button
-                onClick={() => handleAppendSymptom('ไข้หนาวสั่น')}
-                className="px-2.5 py-1 rounded-full bg-[#363434] hover:bg-[#3a3939] text-[#e6e1e1] font-body-sm text-xs transition-colors border border-[#443837]"
-                type="button"
-              >
-                🌡️ ไข้สูง
-              </button>
-              <button
-                onClick={() => handleAppendSymptom('ปวดท้องรุนแรง')}
-                className="px-2.5 py-1 rounded-full bg-[#363434] hover:bg-[#3a3939] text-[#e6e1e1] font-body-sm text-xs transition-colors border border-[#443837]"
-                type="button"
-              >
-                ⚡ ปวดท้องรุนแรง
-              </button>
-              <button
-                onClick={() => handleAppendSymptom('หายใจเหนื่อยหอบ')}
-                className="px-2.5 py-1 rounded-full bg-[#363434] hover:bg-[#3a3939] text-[#e6e1e1] font-body-sm text-xs transition-colors border border-[#443837]"
-                type="button"
-              >
-                🫁 หายใจเหนื่อย
-              </button>
-              <button
-                onClick={() => handleAppendSymptom('เป็นลม วิงเวียนศีรษะ')}
-                className="px-2.5 py-1 rounded-full bg-[#363434] hover:bg-[#3a3939] text-[#e6e1e1] font-body-sm text-xs transition-colors border border-[#443837]"
-                type="button"
-              >
-                💫 เป็นลม/เวียนหัว
-              </button>
-              <button
-                onClick={() => handleAppendSymptom('หมดสติ ปลุกไม่ตื่น')}
-                className="px-2.5 py-1 rounded-full bg-[#93000a] hover:bg-[#b91a24] text-[#ffdad6] font-body-sm text-xs transition-colors font-bold border border-[#c0392b]"
-                type="button"
-              >
-                ⚠️ หมดสติ
-              </button>
-              <button
-                onClick={() => handleAppendSymptom('ว.40 มีแผลถลอก/ปวดฟกช้ำ')}
-                className="px-2.5 py-1 rounded-full bg-[#363434] hover:bg-[#3a3939] text-[#ffb95f] font-body-sm text-xs transition-colors border border-[#443837]"
-                type="button"
-              >
-                💥 รถชน/ถลอก
-              </button>
-            </div>
-
-            {/* Location with GPS pin button */}
-            <div className="flex flex-col gap-1 pt-1">
-              <div className="flex items-center justify-between">
-                <label className="font-label-tactical text-[11px] text-[#e4beba] font-semibold uppercase">
-                  สถานที่เกิดเหตุ / จุดอ้างอิง
-                </label>
-                <button
-                  onClick={handleGetCurrentLocation}
-                  className="text-[#4cd7f6] hover:text-white font-label-tactical text-[11px] flex items-center gap-1 transition-colors"
-                  type="button"
-                >
-                  <span className="material-symbols-outlined text-[14px]">my_location</span>
-                  ดึงพิกัด GPS สด
-                </button>
-              </div>
-              <div className="p-3 rounded-lg bg-[#0f0e0e] border border-[#2e2423] text-[#e6e1e1] shadow-inner flex items-start gap-2 focus-within:border-[#ffb3ad]">
-                <span className="material-symbols-outlined text-[#ffb3ad] text-[20px] mt-0.5 flex-shrink-0">
-                  pin_drop
-                </span>
-                <textarea
-                  className="w-full bg-transparent text-[#e6e1e1] focus:outline-none font-body-md text-sm resize-none"
-                  value={report.location}
-                  onChange={(e) => updateField('location', e.target.value)}
-                  rows={2}
-                  placeholder="ระบุชื่อซอย ถนน จุดสังเกต หรือร้านค้าใกล้เคียง..."
-                />
-              </div>
-            </div>
-
-            {/* Bottom Quick Close Button for PART 02 */}
-            <div className="pt-2 border-t border-[#2e2423] flex items-center justify-between">
-              <span className="text-[11px] font-label-tactical text-[#e4beba]">
-                PART 02 เรียบร้อยแล้ว
-              </span>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => onToggleSection('sec2')}
-                  className="h-8 px-3 rounded-lg bg-[#2b2a29] hover:bg-[#363434] text-[#e6e1e1] font-label-tactical text-[11px] font-semibold flex items-center gap-1 border border-[#3e3433] transition-colors"
-                >
-                  <span className="material-symbols-outlined text-[15px]">unfold_less</span>
-                  <span>พับปิดหัวข้อนี้</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    onToggleSection('sec2');
-                    if (!openSections.sec3) onToggleSection('sec3');
-                  }}
-                  className="h-8 px-3 rounded-lg bg-[#4cd7f6]/20 hover:bg-[#4cd7f6] text-[#4cd7f6] hover:text-[#003640] font-label-tactical text-[11px] font-bold flex items-center gap-1 border border-[#4cd7f6]/40 transition-colors"
-                >
-                  <span>ถัดไป PART 03</span>
-                  <span className="material-symbols-outlined text-[15px]">arrow_downward</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* SECTION 3: Patient Information & Vitals */}
-      <div className="accordion-item rounded-xl bg-[#1c1b1b] border border-[#2e2423] shadow-sm overflow-hidden transition-all duration-200">
-        <div
-          className="cursor-pointer px-4 md:px-5 py-3.5 bg-[#211f1f] border-b border-[#2e2423] flex items-center justify-between select-none hover:bg-[#252323] transition-colors"
-          onClick={() => onToggleSection('sec3')}
-        >
-          <div className="flex items-center gap-2.5">
-            <span className="w-2 h-5 rounded-full bg-[#4cd7f6] inline-block"></span>
-            <span className="font-label-tactical text-[11px] text-[#4cd7f6] font-bold uppercase tracking-widest">
-              PART 03
-            </span>
-            <h3 className="font-headline-md text-base md:text-lg text-[#e6e1e1] font-semibold tracking-tight">
-              ข้อมูลผู้ป่วย & สัญญาณชีพ (Vital Signs)
-            </h3>
-            <span className="hidden sm:inline-flex px-1.5 py-0.5 rounded bg-[#2b2a29] text-[#e4beba] font-label-tactical text-[11px]">
-              8 ฟิลด์
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onToggleSection('sec3');
-              }}
-              className={`px-3 py-1.5 rounded-lg font-headline-md text-xs font-bold flex items-center gap-1.5 transition-all border shadow-sm ${
-                openSections.sec3
-                  ? 'bg-[#93000a] hover:bg-[#b91a24] text-[#ffdad6] border-[#c0392b]'
-                  : 'bg-[#4cd7f6] hover:bg-[#38bdf8] text-[#003640] border-[#4cd7f6]'
-              }`}
-            >
-              <span className="material-symbols-outlined text-[16px]">
-                {openSections.sec3 ? 'close' : 'expand_more'}
-              </span>
-              <span>{openSections.sec3 ? '✕ ปิดหัวข้อนี้' : '▼ เปิดหัวข้อนี้'}</span>
-            </button>
-          </div>
-        </div>
-
-        {openSections.sec3 && (
-          <div className="p-4 md:p-5 space-y-3.5">
-            {/* Quick EMS Patient Presets */}
-            <div className="p-2.5 rounded-xl bg-[#211f1f] border border-[#3e3433] flex flex-wrap items-center justify-between gap-2 shadow-sm">
-              <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-[#4cd7f6] text-[18px]">
-                  person_search
-                </span>
-                <span className="font-label-tactical text-xs text-[#e6e1e1] font-bold">
-                  ปุ่มลัดเพศ/สถานะผู้ป่วย:
-                </span>
-              </div>
-              <div className="flex items-center gap-1.5 flex-wrap">
+            {/* Incident Type Selector */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold text-[#e4beba] flex items-center gap-1">
+                <span>ประเภทเหตุการณ์</span>
+                {!visibility.incidentType && (
+                  <span className="text-[10px] text-neutral-400">(ปิดในรายงาน)</span>
+                )}
+              </label>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 {[
-                  { label: 'ชาย 1 ราย', val: 'ชาย 1 ราย' },
-                  { label: 'หญิง 1 ราย', val: 'หญิง 1 ราย' },
-                  { label: 'เด็ก 1 ราย', val: 'เด็ก 1 ราย' },
-                  { label: 'ไม่ทราบชื่อ/หมดสติ', val: 'ชาย 1 ราย', name: 'ไม่ทราบชื่อ (หมดสติ)' },
-                  { label: 'ปฏิเสธการรักษา', val: '1 ราย', name: 'ปฏิเสธการรักษา' },
-                ].map((preset, idx) => (
+                  { id: 'accident', label: '💥 ว.40 อุบัติเหตุ', color: 'border-orange-500' },
+                  { id: 'illness', label: '🫀 ผู้ป่วยทั่วไป', color: 'border-sky-500' },
+                  { id: 'cpr', label: '⚡ CPR วิกฤต', color: 'border-red-600' },
+                  { id: 'other', label: '🚒 กู้ภัย/ช่วยเหลือ', color: 'border-emerald-500' },
+                ].map((t) => (
                   <button
-                    key={idx}
+                    key={t.id}
                     type="button"
-                    onClick={() => {
-                      updateField('genderCount', preset.val);
-                      if (preset.name) {
-                        updateField('patientName', preset.name);
-                      }
-                      onShowToast('เลือกข้อมูลด่วน', `ตั้งค่า ${preset.label} เรียบร้อย`, 'check');
-                    }}
-                    className="h-7 px-2.5 rounded-md bg-[#2b2a29] hover:bg-[#383635] text-[#e4beba] hover:text-[#fff] border border-[#3e3433] font-label-tactical text-[11px] font-semibold transition-colors flex items-center gap-1 active:scale-95"
+                    onClick={() => updateField('incidentType', t.id as any)}
+                    className={`py-2 px-3 rounded-lg text-xs font-bold border transition-all active:scale-95 ${
+                      report.incidentType === t.id
+                        ? 'bg-[#ff5451] text-[#400005] border-[#ff8885] shadow-md font-extrabold'
+                        : 'bg-[#211f1f] text-[#e4beba] border-[#362e2d] hover:bg-[#2b2a29]'
+                    }`}
                   >
-                    <span>{preset.label}</span>
+                    {t.label}
                   </button>
                 ))}
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-3 md:gap-4">
-              <div className="md:col-span-3 flex flex-col gap-1">
-                <label className="font-label-tactical text-[11px] text-[#e4beba] font-semibold uppercase">
-                  เพศ & จำนวน
-                </label>
-                <div className="h-12 px-3 rounded-lg bg-[#0f0e0e] border border-[#2e2423] text-[#e6e1e1] flex items-center shadow-inner focus-within:border-[#4cd7f6]">
+            {/* Station & Unit */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-bold text-[#e4beba]">จุดบริการ / ศูนย์วิทยุ</label>
+                <div className="relative">
                   <input
-                    className="w-full bg-transparent text-[#e6e1e1] focus:outline-none font-body-md text-sm"
-                    value={report.genderCount}
-                    onChange={(e) => updateField('genderCount', e.target.value)}
                     type="text"
-                    placeholder="เช่น หญิง 1 ราย"
+                    value={report.station}
+                    onChange={(e) => updateField('station', e.target.value)}
+                    placeholder="เช่น จุดข้าง สภ.โพธิ์กลาง ฮุก 31"
+                    className="w-full h-10 px-3 rounded-lg bg-[#141313] border border-[#3e3433] text-white text-xs focus:border-[#ff5451] focus:outline-none"
                   />
+                  <div className="flex flex-wrap gap-1 mt-1.5">
+                    {SERVICE_STATIONS.slice(0, 3).map((st) => (
+                      <button
+                        key={st}
+                        type="button"
+                        onClick={() => updateField('station', st)}
+                        className="text-[10px] px-2 py-0.5 rounded bg-[#252323] text-[#e4beba] hover:text-white border border-[#362e2d]"
+                      >
+                        {st.replace(' ฮุก 31', '')}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
 
-              <div className="md:col-span-6 flex flex-col gap-1">
-                <label className="font-label-tactical text-[11px] text-[#e4beba] font-semibold uppercase">
-                  ชื่อ - นามสกุล ผู้ป่วย
-                </label>
-                <div className="h-12 px-3 rounded-lg bg-[#0f0e0e] border border-[#2e2423] text-[#e6e1e1] flex items-center shadow-inner focus-within:border-[#4cd7f6]">
-                  <span className="material-symbols-outlined text-[#e4beba] text-[18px] mr-2">
-                    person
-                  </span>
-                  <input
-                    className="w-full bg-transparent text-[#e6e1e1] focus:outline-none font-body-md text-sm font-medium"
-                    value={report.patientName}
-                    onChange={(e) => updateField('patientName', e.target.value)}
-                    type="text"
-                    placeholder="ระบุชื่อ-นามสกุล..."
-                  />
-                </div>
-              </div>
-
-              <div className="md:col-span-3 flex flex-col gap-1">
-                <label className="font-label-tactical text-[11px] text-[#e4beba] font-semibold uppercase">
-                  อายุ
-                </label>
-                <div className="h-12 px-3 rounded-lg bg-[#0f0e0e] border border-[#2e2423] text-[#e6e1e1] flex items-center shadow-inner focus-within:border-[#4cd7f6]">
-                  <input
-                    className="w-full bg-transparent text-[#e6e1e1] focus:outline-none font-body-md text-sm"
-                    value={report.patientAge}
-                    onChange={(e) => updateField('patientAge', e.target.value)}
-                    type="text"
-                    placeholder="เช่น 59 ปี"
-                  />
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-bold text-[#e4beba]">รถพยาบาล / รหัสรถกู้ชีพ</label>
+                <input
+                  type="text"
+                  value={report.unit}
+                  onChange={(e) => updateField('unit', e.target.value)}
+                  placeholder="เช่น รถพยาบาลคันที่ 11, รถกู้ชีพ 05"
+                  className="w-full h-10 px-3 rounded-lg bg-[#141313] border border-[#3e3433] text-white text-xs focus:border-[#ff5451] focus:outline-none"
+                />
+                <div className="flex flex-wrap gap-1 mt-1.5">
+                  {AMBULANCE_UNITS.slice(0, 4).map((u) => (
+                    <button
+                      key={u}
+                      type="button"
+                      onClick={() => updateField('unit', u)}
+                      className="text-[10px] px-2 py-0.5 rounded bg-[#252323] text-[#e4beba] hover:text-white border border-[#362e2d]"
+                    >
+                      {u}
+                    </button>
+                  ))}
                 </div>
               </div>
             </div>
 
-            <div className="flex flex-col gap-1">
-              <label className="font-label-tactical text-[11px] text-[#e4beba] font-semibold uppercase">
-                ที่อยู่ตามบัตรประชาชน
-              </label>
-              <div className="h-12 px-3 rounded-lg bg-[#0f0e0e] border border-[#2e2423] text-[#e6e1e1] flex items-center shadow-inner focus-within:border-[#4cd7f6]">
-                <span className="material-symbols-outlined text-[#e4beba] text-[18px] mr-2">
-                  home
-                </span>
+            {/* Case ID, Date, and Time */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-bold text-[#e4beba]">เลขลำดับเคส (Case ID)</label>
                 <input
-                  className="w-full bg-transparent text-[#e6e1e1] focus:outline-none font-body-md text-sm"
-                  value={report.patientAddress}
-                  onChange={(e) => updateField('patientAddress', e.target.value)}
                   type="text"
-                  placeholder="ระบุบ้านเลขที่ หมู่ ตำบล อำเภอ..."
+                  value={report.caseId}
+                  onChange={(e) => updateField('caseId', e.target.value)}
+                  placeholder="เช่น เคสที่ 01 หรือ เว้นว่าง"
+                  className="w-full h-10 px-3 rounded-lg bg-[#141313] border border-[#3e3433] text-white text-xs focus:border-[#ff5451] focus:outline-none"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-[#e4beba]">ประจำวันที่</label>
+                  <button
+                    type="button"
+                    onClick={handleSetTodayDate}
+                    className="text-[11px] text-[#4cd7f6] hover:underline"
+                  >
+                    + ใส่วันนี้
+                  </button>
+                </div>
+                <input
+                  type="text"
+                  value={report.dateStr}
+                  onChange={(e) => updateField('dateStr', e.target.value)}
+                  placeholder="เช่น 20 ต.ค. 2569"
+                  className="w-full h-10 px-3 rounded-lg bg-[#141313] border border-[#3e3433] text-white text-xs focus:border-[#ff5451] focus:outline-none"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-[#e4beba]">เวลาที่รับแจ้ง / เวลา ว.4</label>
+                  <button
+                    type="button"
+                    onClick={handleSetCurrentTime}
+                    className="text-[11px] text-[#ff5451] font-semibold hover:underline"
+                  >
+                    + เวลาสดตอนนี้
+                  </button>
+                </div>
+                <input
+                  type="text"
+                  value={report.timestamp}
+                  onChange={(e) => updateField('timestamp', e.target.value)}
+                  placeholder="เช่น 14:30 น."
+                  className="w-full h-10 px-3 rounded-lg bg-[#141313] border border-[#3e3433] text-white text-xs focus:border-[#ff5451] focus:outline-none"
                 />
               </div>
             </div>
 
-            {/* Tactical Vital Signs Matrix */}
-            <div className="p-3.5 rounded-xl bg-[#0f0e0e] border border-[#2e2423] shadow-inner space-y-2">
-              <div className="flex items-center justify-between mb-1">
-                <span className="font-label-tactical text-[11px] text-[#4cd7f6] uppercase flex items-center gap-1 font-bold">
-                  <span className="material-symbols-outlined text-[15px]">monitor_heart</span>
-                  สัญญาณชีพ ณ จุดเกิดเหตุ (VITAL SIGNS)
-                </span>
-                <div className="flex items-center gap-2">
+            {/* Symptoms / Incident Description */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold text-[#e4beba]">
+                อาการที่รับแจ้ง / รายละเอียดเหตุการณ์
+              </label>
+              <textarea
+                rows={2}
+                value={report.symptoms}
+                onChange={(e) => updateField('symptoms', e.target.value)}
+                placeholder="ระบุอาการ เช่น ว.40 จยย.ชนกับรถเก๋ง มีแผลถลอก หรือ ไข้สูงหนาวสั่น..."
+                className="w-full p-2.5 rounded-lg bg-[#141313] border border-[#3e3433] text-white text-xs focus:border-[#ff5451] focus:outline-none leading-relaxed"
+              />
+              <div className="flex flex-wrap items-center gap-1">
+                <span className="text-[10px] text-neutral-400">คำด่วน:</span>
+                {[
+                  'ว.40 จยย.ล้มเอง',
+                  'ว.40 จยย.+เก๋ง',
+                  'มีแผลถลอกตามร่างกาย',
+                  'ปวดเจ็บสะโพก',
+                  'ศีรษะแตก เลือดไหล',
+                  'หมดสติ ปลุกไม่ตื่น',
+                  'แน่นหน้าอก หายใจลำบาก',
+                  'แผลฉีกขาด',
+                ].map((tag) => (
                   <button
-                    onClick={() => setShowExtraVitals(!showExtraVitals)}
-                    className="text-[#ffb95f] hover:text-white font-label-tactical text-[10px] underline"
+                    key={tag}
                     type="button"
+                    onClick={() => handleAppendSymptom(tag)}
+                    className="text-[10px] px-2 py-0.5 rounded bg-[#252323] hover:bg-[#333030] text-[#ffdad6] border border-[#3e3433] active:scale-95"
                   >
-                    {showExtraVitals ? '- ซ่อน GCS/DTX' : '+ เพิ่ม GCS/DTX'}
+                    + {tag}
                   </button>
-                  <span className="font-label-tactical text-[11px] text-[#e4beba]">
-                    บันทึกตรวจแรกพบ
-                  </span>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                {/* BP */}
-                <div className="bg-[#211f1f] border border-[#2e2423] p-2.5 rounded-lg flex flex-col justify-between">
-                  <span className="font-label-tactical text-[10px] text-[#e4beba]">BP (ความดัน)</span>
-                  <div className="flex items-baseline gap-1 mt-1">
-                    <input
-                      className="w-full bg-transparent text-[#ffb95f] font-label-tactical text-base font-bold focus:outline-none text-left"
-                      value={report.vitals.bp}
-                      onChange={(e) => updateVitals('bp', e.target.value)}
-                      type="text"
-                      placeholder="120/80"
-                    />
-                    <span className="font-label-tactical text-[10px] text-[#e4beba]">mmHg</span>
-                  </div>
-                </div>
-
-                {/* PR */}
-                <div className="bg-[#211f1f] border border-[#2e2423] p-2.5 rounded-lg flex flex-col justify-between">
-                  <span className="font-label-tactical text-[10px] text-[#e4beba]">PR (ชีพจร)</span>
-                  <div className="flex items-baseline gap-1 mt-1">
-                    <input
-                      className="w-full bg-transparent text-[#4cd7f6] font-label-tactical text-base font-bold focus:outline-none text-left"
-                      value={report.vitals.pr}
-                      onChange={(e) => updateVitals('pr', e.target.value)}
-                      type="text"
-                      placeholder="80"
-                    />
-                    <span className="font-label-tactical text-[10px] text-[#e4beba]">bpm</span>
-                  </div>
-                </div>
-
-                {/* SpO2 */}
-                <div className="bg-[#211f1f] border border-[#2e2423] p-2.5 rounded-lg flex flex-col justify-between">
-                  <span className="font-label-tactical text-[10px] text-[#e4beba]">SpO2 (ออกซิเจน)</span>
-                  <div className="flex items-baseline gap-1 mt-1">
-                    <input
-                      className="w-full bg-transparent text-[#e6e1e1] font-label-tactical text-base font-bold focus:outline-none text-left"
-                      value={report.vitals.spo2}
-                      onChange={(e) => updateVitals('spo2', e.target.value)}
-                      type="text"
-                      placeholder="98"
-                    />
-                    <span className="font-label-tactical text-[10px] text-[#e4beba]">%</span>
-                  </div>
-                </div>
-
-                {/* Temp */}
-                <div className="bg-[#211f1f] border border-[#2e2423] p-2.5 rounded-lg flex flex-col justify-between">
-                  <span className="font-label-tactical text-[10px] text-[#e4beba]">Temp (อุณหภูมิ)</span>
-                  <div className="flex items-baseline gap-1 mt-1">
-                    <input
-                      className="w-full bg-transparent text-[#ffb3ad] font-label-tactical text-base font-bold focus:outline-none text-left"
-                      value={report.vitals.temp}
-                      onChange={(e) => updateVitals('temp', e.target.value)}
-                      type="text"
-                      placeholder="37.0"
-                    />
-                    <span className="font-label-tactical text-[10px] text-[#e4beba]">°C</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Optional GCS and DTX metrics */}
-              {showExtraVitals && (
-                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-[#2e2423]">
-                  <div className="bg-[#211f1f] border border-[#2e2423] p-2.5 rounded-lg flex flex-col justify-between">
-                    <span className="font-label-tactical text-[10px] text-[#e4beba]">GCS (Glasgow Coma)</span>
-                    <div className="flex items-baseline gap-1 mt-1">
-                      <input
-                        className="w-full bg-transparent text-[#ffb95f] font-label-tactical text-sm font-bold focus:outline-none text-left"
-                        value={report.vitals.gcs || ''}
-                        onChange={(e) => updateVitals('gcs', e.target.value)}
-                        type="text"
-                        placeholder="E4V5M6 (15)"
-                      />
-                    </div>
-                  </div>
-                  <div className="bg-[#211f1f] border border-[#2e2423] p-2.5 rounded-lg flex flex-col justify-between">
-                    <span className="font-label-tactical text-[10px] text-[#e4beba]">DTX (ระดับน้ำตาล)</span>
-                    <div className="flex items-baseline gap-1 mt-1">
-                      <input
-                        className="w-full bg-transparent text-[#4cd7f6] font-label-tactical text-sm font-bold focus:outline-none text-left"
-                        value={report.vitals.dtx || ''}
-                        onChange={(e) => updateVitals('dtx', e.target.value)}
-                        type="text"
-                        placeholder="110 mg/dL"
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Bottom Quick Close Button for PART 03 */}
-            <div className="pt-2 border-t border-[#2e2423] flex items-center justify-between">
-              <span className="text-[11px] font-label-tactical text-[#e4beba]">
-                PART 03 เรียบร้อยแล้ว
-              </span>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => onToggleSection('sec3')}
-                  className="h-8 px-3 rounded-lg bg-[#2b2a29] hover:bg-[#363434] text-[#e6e1e1] font-label-tactical text-[11px] font-semibold flex items-center gap-1 border border-[#3e3433] transition-colors"
-                >
-                  <span className="material-symbols-outlined text-[15px]">unfold_less</span>
-                  <span>พับปิดหัวข้อนี้</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    onToggleSection('sec3');
-                    if (!openSections.sec4) onToggleSection('sec4');
-                  }}
-                  className="h-8 px-3 rounded-lg bg-[#ff5451]/20 hover:bg-[#ff5451] text-[#ffb3ad] hover:text-[#5c0008] font-label-tactical text-[11px] font-bold flex items-center gap-1 border border-[#ff5451]/40 transition-colors"
-                >
-                  <span>ถัดไป PART 04</span>
-                  <span className="material-symbols-outlined text-[15px]">arrow_downward</span>
-                </button>
+                ))}
               </div>
             </div>
           </div>
         )}
       </div>
 
-      {/* SECTION 4: Hospital Destination & Rescue Crew */}
-      <div className="accordion-item rounded-xl bg-[#1c1b1b] border border-[#2e2423] shadow-sm overflow-hidden transition-all duration-200">
+      {/* CARD 2: สถานที่เกิดเหตุ (LOCATION) */}
+      <div className="rounded-xl bg-[#191415] border border-[#361a1d] shadow-md overflow-hidden">
         <div
-          className="cursor-pointer px-4 md:px-5 py-3.5 bg-[#211f1f] border-b border-[#2e2423] flex items-center justify-between select-none hover:bg-[#252323] transition-colors"
-          onClick={() => onToggleSection('sec4')}
+          onClick={() => toggleAccordion('secLocation')}
+          className="px-4 py-3 bg-[#221315] border-b border-[#361a1d] flex items-center justify-between cursor-pointer select-none"
         >
-          <div className="flex items-center gap-2.5">
-            <span className="w-2 h-5 rounded-full bg-[#ff5451] inline-block"></span>
-            <span className="font-label-tactical text-[11px] text-[#ff5451] font-bold uppercase tracking-widest">
-              PART 04
-            </span>
-            <h3 className="font-headline-md text-base md:text-lg text-[#e6e1e1] font-semibold tracking-tight">
-              การนำส่ง รพ. & กำลังพลออก ว.4
-            </h3>
-            <span className="hidden sm:inline-flex px-1.5 py-0.5 rounded bg-[#2b2a29] text-[#e4beba] font-label-tactical text-[11px]">
-              3 ฟิลด์
-            </span>
-          </div>
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onToggleSection('sec4');
-              }}
-              className={`px-3 py-1.5 rounded-lg font-headline-md text-xs font-bold flex items-center gap-1.5 transition-all border shadow-sm ${
-                openSections.sec4
-                  ? 'bg-[#93000a] hover:bg-[#b91a24] text-[#ffdad6] border-[#c0392b]'
-                  : 'bg-[#06C755] hover:bg-[#05b34c] text-white border-[#06C755]'
-              }`}
-            >
-              <span className="material-symbols-outlined text-[16px]">
-                {openSections.sec4 ? 'close' : 'expand_more'}
-              </span>
-              <span>{openSections.sec4 ? '✕ ปิดหัวข้อนี้' : '▼ เปิดหัวข้อนี้'}</span>
-            </button>
+            <span className="material-symbols-outlined text-[#ffb95f] text-[20px]">
+              place
+            </span>
+            <span className="font-headline-md text-sm font-bold text-white">
+              ส่วนที่ 2: สถานที่เกิดเหตุ & จุดอ้างอิง
+            </span>
           </div>
+          <span className="material-symbols-outlined text-[#e4beba] text-[20px]">
+            {collapsed.secLocation ? 'expand_more' : 'expand_less'}
+          </span>
         </div>
 
-        {openSections.sec4 && (
-          <div className="p-4 md:p-5 space-y-3.5">
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-3 md:gap-4">
-              <div className="md:col-span-6 flex flex-col gap-1">
-                <label className="font-label-tactical text-[11px] text-[#e4beba] font-semibold uppercase">
-                  โรงพยาบาลที่นำส่งปลายทาง
-                </label>
-                <div className="h-12 px-3 rounded-lg bg-[#0f0e0e] border border-[#2e2423] text-[#e6e1e1] flex items-center shadow-inner focus-within:border-[#4cd7f6]">
-                  <span className="material-symbols-outlined text-[#4cd7f6] text-[18px] mr-2">
-                    local_hospital
-                  </span>
-                  <input
-                    className="w-full bg-transparent text-[#e6e1e1] focus:outline-none font-body-md text-sm font-semibold"
-                    value={report.hospital}
-                    onChange={(e) => updateField('hospital', e.target.value)}
-                    type="text"
-                    list="hospital-list"
-                    placeholder="เลือกหรือพิมพ์ชื่อ รพ."
-                  />
-                  <datalist id="hospital-list">
-                    {HOSPITALS_KORAT.map((h) => (
-                      <option key={h} value={h} />
-                    ))}
-                  </datalist>
-                </div>
-              </div>
+        {!collapsed.secLocation && (
+          <div className="p-4 space-y-3">
+            <RenderVisibilityToggle sectionKey="location" label="สถานที่เกิดเหตุ" />
 
-              <div className="md:col-span-6 flex flex-col gap-1">
-                <label className="font-label-tactical text-[11px] text-[#e4beba] font-semibold uppercase">
-                  รหัสกำลังพลปฏิบัติหน้าที่ ว.4
+            <div className="flex flex-col gap-1.5">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-[#e4beba]">
+                  สถานที่เกิดเหตุ / จุดสังเกตใกล้เคียง
                 </label>
-                <div className="h-12 px-3 rounded-lg bg-[#0f0e0e] border border-[#2e2423] text-[#e6e1e1] flex items-center shadow-inner focus-within:border-[#ffb95f]">
-                  <span className="material-symbols-outlined text-[#ffb95f] text-[18px] mr-2">
-                    badge
+                <button
+                  type="button"
+                  onClick={handleGetCurrentLocation}
+                  className="px-2.5 py-1 rounded-md bg-[#251f1f] border border-[#ff5451]/50 text-[#ffb3ad] hover:text-white text-[11px] font-semibold flex items-center gap-1 active:scale-95"
+                >
+                  <span className="material-symbols-outlined text-[14px] text-[#ff5451]">
+                    my_location
                   </span>
-                  <input
-                    className="w-full bg-transparent text-[#ffb95f] focus:outline-none font-label-tactical text-xs font-bold"
-                    value={report.crew}
-                    onChange={(e) => updateField('crew', e.target.value)}
-                    type="text"
-                    placeholder="เช่น พบ.32, พบ.34, ข้างสภ.220"
-                  />
-                </div>
+                  <span>ดึงพิกัด GPS อัตโนมัติ</span>
+                </button>
+              </div>
+              <textarea
+                rows={2}
+                value={report.location}
+                onChange={(e) => updateField('location', e.target.value)}
+                placeholder="เช่น ถนนมิตรภาพ ขาเข้า หน้าตลาดเซฟวัน ต.ในเมือง อ.เมือง จ.นครราชสีมา"
+                className="w-full p-2.5 rounded-lg bg-[#141313] border border-[#3e3433] text-white text-xs focus:border-[#ff5451] focus:outline-none"
+              />
+              <div className="flex flex-wrap gap-1">
+                {[
+                  'หน้าตลาดเซฟวัน',
+                  'สี่แยกปักธงชัย',
+                  'หน้าโลตัสหัวทะเล',
+                  'ถนนมิตรภาพ',
+                  'ถนนสืบศิริ',
+                  'สามแยกปัก',
+                  'หน้า รพ.มหาราช',
+                ].map((loc) => (
+                  <button
+                    key={loc}
+                    type="button"
+                    onClick={() => updateField('location', loc)}
+                    className="text-[10px] px-2 py-0.5 rounded bg-[#252323] text-[#e4beba] hover:text-white border border-[#362e2d]"
+                  >
+                    {loc}
+                  </button>
+                ))}
               </div>
             </div>
+          </div>
+        )}
+      </div>
 
-            <div className="flex flex-col gap-1">
-              <label className="font-label-tactical text-[11px] text-[#e4beba] font-semibold uppercase">
-                หมายเหตุเพิ่มเติม / เหตุการณ์พิเศษ ณ จุดเกิดเหตุ
-              </label>
-              <div className="p-3 rounded-lg bg-[#0f0e0e] border border-[#2e2423] text-[#e6e1e1] shadow-inner focus-within:border-[#ff5451]">
-                <textarea
-                  className="w-full bg-transparent text-[#e6e1e1] focus:outline-none font-body-md text-sm resize-none"
-                  value={report.notes}
-                  onChange={(e) => updateField('notes', e.target.value)}
-                  placeholder="ระบุการให้การช่วยเหลือเพิ่มเติม เช่น ให้ออกซิเจน Cannula 3 LPM หรือ ปฐมพยาบาลห้ามเลือด..."
-                  rows={2}
+      {/* CARD 3: รายละเอียดอุบัติเหตุทางรถ (VEHICLES INVOLVED: คันที่ 1-2-3...) */}
+      <div className="rounded-xl bg-[#191415] border border-[#361a1d] shadow-md overflow-hidden">
+        <div
+          onClick={() => toggleAccordion('secVehicles')}
+          className="px-4 py-3 bg-[#221315] border-b border-[#361a1d] flex items-center justify-between cursor-pointer select-none"
+        >
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-[#38bdf8] text-[20px]">
+              directions_car
+            </span>
+            <div className="flex items-center gap-2">
+              <span className="font-headline-md text-sm font-bold text-white">
+                ส่วนที่ 3: ข้อมูลยานพาหนะคู่กรณี (คันที่ 1, 2, 3...)
+              </span>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#38bdf8]/20 text-[#38bdf8]">
+                {report.vehicles?.length || 0} คัน
+              </span>
+            </div>
+          </div>
+          <span className="material-symbols-outlined text-[#e4beba] text-[20px]">
+            {collapsed.secVehicles ? 'expand_more' : 'expand_less'}
+          </span>
+        </div>
+
+        {!collapsed.secVehicles && (
+          <div className="p-4 space-y-4">
+            <RenderVisibilityToggle sectionKey="vehicles" label="รายละเอียดข้อมูลรถที่เกิดเหตุ" />
+
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-[#e4beba]">
+                กรณีเกิดอุบัติเหตุ สามารถเพิ่มข้อมูลรถคู่กรณีได้ไม่จำกัด (คันที่ 1, 2, 3...)
+              </span>
+              <button
+                type="button"
+                onClick={handleAddVehicle}
+                className="h-8 px-3 rounded-lg bg-[#38bdf8] hover:bg-[#0284c7] text-[#002f3c] font-bold text-xs flex items-center gap-1.5 transition-all active:scale-95 shadow"
+              >
+                <span className="material-symbols-outlined text-[16px]">add</span>
+                <span>+ เพิ่มรถคันถัดไป</span>
+              </button>
+            </div>
+
+            {/* List of Vehicles */}
+            <div className="space-y-3">
+              {(report.vehicles || []).map((veh, idx) => (
+                <div
+                  key={veh.id || idx}
+                  className="p-3.5 rounded-xl bg-[#141212] border border-[#3a2f30] space-y-3 relative group"
+                >
+                  <div className="flex items-center justify-between border-b border-[#2d2526] pb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="w-6 h-6 rounded-full bg-[#ff5451] text-[#4a0005] font-extrabold text-xs flex items-center justify-center">
+                        {veh.order || idx + 1}
+                      </span>
+                      <span className="font-bold text-xs text-white">
+                        รถคันที่ {veh.order || idx + 1}
+                      </span>
+                      <span className="text-[11px] text-sky-400 font-medium">
+                        [{veh.type || 'ไม่ระบุประเภท'}]
+                      </span>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveVehicle(idx)}
+                      className="px-2 py-0.5 rounded bg-[#3b1212] hover:bg-[#ff5451] text-[#ffdad6] hover:text-[#5c0008] text-[11px] font-semibold flex items-center gap-1 transition-colors"
+                      title="ลบรถคันนี้"
+                    >
+                      <span className="material-symbols-outlined text-[14px]">delete</span>
+                      <span>ลบคันนี้</span>
+                    </button>
+                  </div>
+
+                  {/* Vehicle Type Presets */}
+                  <div className="flex flex-wrap gap-1">
+                    {VEHICLE_TYPES.slice(0, 6).map((vt) => (
+                      <button
+                        key={vt}
+                        type="button"
+                        onClick={() => handleUpdateVehicle(idx, { type: vt })}
+                        className={`text-[10px] px-2 py-0.5 rounded border transition-colors ${
+                          veh.type === vt
+                            ? 'bg-[#38bdf8] text-[#002f3c] border-[#38bdf8] font-bold'
+                            : 'bg-[#211f1f] text-[#e4beba] border-[#362e2d] hover:text-white'
+                        }`}
+                      >
+                        {vt}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Vehicle Fields Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[11px] text-[#e4beba]">ยี่ห้อ / รุ่น</label>
+                      <input
+                        type="text"
+                        value={veh.brandModel}
+                        onChange={(e) => handleUpdateVehicle(idx, { brandModel: e.target.value })}
+                        placeholder="เช่น Honda Wave 110i, Isuzu D-Max"
+                        className="w-full h-8 px-2.5 rounded bg-[#1e1b1b] border border-[#3e3433] text-white text-xs focus:border-[#38bdf8] focus:outline-none"
+                      />
+                    </div>
+
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[11px] text-[#e4beba]">สีตัวรถ</label>
+                      <input
+                        type="text"
+                        value={veh.color}
+                        onChange={(e) => handleUpdateVehicle(idx, { color: e.target.value })}
+                        placeholder="เช่น สีดำ-แดง, สีขาว"
+                        className="w-full h-8 px-2.5 rounded bg-[#1e1b1b] border border-[#3e3433] text-white text-xs focus:border-[#38bdf8] focus:outline-none"
+                      />
+                    </div>
+
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[11px] text-[#e4beba]">หมายเลขทะเบียน & จังหวัด</label>
+                      <input
+                        type="text"
+                        value={veh.plateNumber}
+                        onChange={(e) => handleUpdateVehicle(idx, { plateNumber: e.target.value })}
+                        placeholder="เช่น 1กข 1234 นม."
+                        className="w-full h-8 px-2.5 rounded bg-[#1e1b1b] border border-[#3e3433] text-white text-xs focus:border-[#38bdf8] focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[11px] text-[#e4beba]">ผู้ขับขี่ / ผู้ครอบครอง</label>
+                      <input
+                        type="text"
+                        value={veh.driverName || ''}
+                        onChange={(e) => handleUpdateVehicle(idx, { driverName: e.target.value })}
+                        placeholder="เช่น นาย ก. (บาดเจ็บนำส่ง รพ.) หรือ ไม่ทราบนาม"
+                        className="w-full h-8 px-2.5 rounded bg-[#1e1b1b] border border-[#3e3433] text-white text-xs focus:border-[#38bdf8] focus:outline-none"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[11px] text-[#e4beba]">สภาพความเสียหาย</label>
+                      <input
+                        type="text"
+                        value={veh.damageDesc || ''}
+                        onChange={(e) => handleUpdateVehicle(idx, { damageDesc: e.target.value })}
+                        placeholder="เช่น ด้านหน้าพังยับเยิน, ล้อหน้าคด, แฮนด์หัก"
+                        className="w-full h-8 px-2.5 rounded bg-[#1e1b1b] border border-[#3e3433] text-white text-xs focus:border-[#38bdf8] focus:outline-none"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              {(!report.vehicles || report.vehicles.length === 0) && (
+                <div className="p-4 rounded-xl border border-dashed border-[#3a2f30] text-center space-y-2">
+                  <span className="material-symbols-outlined text-[28px] text-neutral-500 block">
+                    no_crash
+                  </span>
+                  <p className="text-xs text-[#a89f9e]">
+                    ยังไม่มีข้อมูลยานพาหนะ (หากเป็นเคสอุบัติเหตุทางรถ กดปุ่มด้านล่างเพื่อเพิ่มข้อมูลรถคันที่ 1, 2, 3...)
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleAddVehicle}
+                    className="px-3.5 py-1.5 rounded-lg bg-[#251f1f] hover:bg-[#32292a] text-[#ffdad6] border border-[#ff5451]/40 text-xs font-semibold inline-flex items-center gap-1.5 active:scale-95"
+                  >
+                    <span className="material-symbols-outlined text-[16px] text-[#ff5451]">add_circle</span>
+                    <span>+ เพิ่มรถคันที่ 1</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* CARD 4: ข้อมูลผู้ป่วย / ผู้บาดเจ็บ (PATIENT PROFILE) */}
+      <div className="rounded-xl bg-[#191415] border border-[#361a1d] shadow-md overflow-hidden">
+        <div
+          onClick={() => toggleAccordion('secPatient')}
+          className="px-4 py-3 bg-[#221315] border-b border-[#361a1d] flex items-center justify-between cursor-pointer select-none"
+        >
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-[#4cd7f6] text-[20px]">
+              person
+            </span>
+            <span className="font-headline-md text-sm font-bold text-white">
+              ส่วนที่ 4: ข้อมูลผู้ป่วย & ที่อยู่
+            </span>
+          </div>
+          <span className="material-symbols-outlined text-[#e4beba] text-[20px]">
+            {collapsed.secPatient ? 'expand_more' : 'expand_less'}
+          </span>
+        </div>
+
+        {!collapsed.secPatient && (
+          <div className="p-4 space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <RenderVisibilityToggle sectionKey="patientInfo" label="ข้อมูลผู้ป่วย (เพศ/ชื่อ/อายุ)" />
+              <RenderVisibilityToggle sectionKey="patientAddress" label="ที่อยู่ผู้ป่วย" />
+            </div>
+
+            {/* Quick Presets for Demographics */}
+            <div className="flex flex-wrap items-center gap-1.5 pb-1">
+              <span className="text-[10px] text-neutral-400 font-semibold">ทางลัดเพศ:</span>
+              {[
+                { label: 'ชาย 1 ราย', val: 'ชาย 1 ราย' },
+                { label: 'หญิง 1 ราย', val: 'หญิง 1 ราย' },
+                { label: 'ชาย 2 ราย', val: 'ชาย 2 ราย' },
+                { label: 'หญิง 2 ราย', val: 'หญิง 2 ราย' },
+                { label: 'ไม่ทราบชื่อ/ไร้สติ', val: 'ไม่ทราบชื่อ-สกุล' },
+              ].map((p) => (
+                <button
+                  key={p.label}
+                  type="button"
+                  onClick={() => {
+                    if (p.val === 'ไม่ทราบชื่อ-สกุล') {
+                      updateField('patientName', 'ไม่ทราบนาม');
+                    } else {
+                      updateField('genderCount', p.val);
+                    }
+                  }}
+                  className="text-[10px] px-2 py-0.5 rounded bg-[#252323] hover:bg-[#333030] text-[#ffdad6] border border-[#3e3433] active:scale-95"
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+              <div className="sm:col-span-4 flex flex-col gap-1">
+                <label className="text-xs font-bold text-[#e4beba]">เพศ และ จำนวนราย</label>
+                <input
+                  type="text"
+                  value={report.genderCount}
+                  onChange={(e) => updateField('genderCount', e.target.value)}
+                  placeholder="เช่น ชาย 1 ราย"
+                  className="w-full h-10 px-3 rounded-lg bg-[#141313] border border-[#3e3433] text-white text-xs focus:border-[#4cd7f6] focus:outline-none"
+                />
+              </div>
+
+              <div className="sm:col-span-5 flex flex-col gap-1">
+                <label className="text-xs font-bold text-[#e4beba]">ชื่อ-นามสกุล ผู้ป่วย</label>
+                <input
+                  type="text"
+                  value={report.patientName}
+                  onChange={(e) => updateField('patientName', e.target.value)}
+                  placeholder="เช่น นายสมชาย ใจดี หรือ เว้นว่าง"
+                  className="w-full h-10 px-3 rounded-lg bg-[#141313] border border-[#3e3433] text-white text-xs focus:border-[#4cd7f6] focus:outline-none"
+                />
+              </div>
+
+              <div className="sm:col-span-3 flex flex-col gap-1">
+                <label className="text-xs font-bold text-[#e4beba]">อายุ</label>
+                <input
+                  type="text"
+                  value={report.patientAge}
+                  onChange={(e) => updateField('patientAge', e.target.value)}
+                  placeholder="เช่น 35 ปี"
+                  className="w-full h-10 px-3 rounded-lg bg-[#141313] border border-[#3e3433] text-white text-xs focus:border-[#4cd7f6] focus:outline-none"
                 />
               </div>
             </div>
 
-            {/* Bottom Quick Close Button for PART 04 */}
-            <div className="pt-2 border-t border-[#2e2423] flex items-center justify-between">
-              <span className="text-[11px] font-label-tactical text-[#e4beba]">
-                ครบทั้ง 4 ส่วนแล้ว
-              </span>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => onToggleSection('sec4')}
-                  className="h-8 px-3 rounded-lg bg-[#2b2a29] hover:bg-[#363434] text-[#e6e1e1] font-label-tactical text-[11px] font-semibold flex items-center gap-1 border border-[#3e3433] transition-colors"
-                >
-                  <span className="material-symbols-outlined text-[15px]">unfold_less</span>
-                  <span>พับปิดหัวข้อ PART 04</span>
-                </button>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-bold text-[#e4beba]">ที่อยู่ตามบัตร / ที่อยู่ปัจจุบัน</label>
+              <textarea
+                rows={2}
+                value={report.patientAddress}
+                onChange={(e) => updateField('patientAddress', e.target.value)}
+                placeholder="เช่น 123 ม.4 ต.โพธิ์กลาง อ.เมือง จ.นครราชสีมา (หรือเว้นว่างถ้าไม่ทราบ)"
+                className="w-full p-2.5 rounded-lg bg-[#141313] border border-[#3e3433] text-white text-xs focus:border-[#4cd7f6] focus:outline-none"
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* CARD 5: สัญญาณชีพ (VITAL SIGNS) */}
+      <div className="rounded-xl bg-[#191415] border border-[#361a1d] shadow-md overflow-hidden">
+        <div
+          onClick={() => toggleAccordion('secVitals')}
+          className="px-4 py-3 bg-[#221315] border-b border-[#361a1d] flex items-center justify-between cursor-pointer select-none"
+        >
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-[#06C755] text-[20px]">
+              vital_signs
+            </span>
+            <span className="font-headline-md text-sm font-bold text-white">
+              ส่วนที่ 5: สัญญาณชีพ (Vital Signs)
+            </span>
+          </div>
+          <span className="material-symbols-outlined text-[#e4beba] text-[20px]">
+            {collapsed.secVitals ? 'expand_more' : 'expand_less'}
+          </span>
+        </div>
+
+        {!collapsed.secVitals && (
+          <div className="p-4 space-y-4">
+            <RenderVisibilityToggle sectionKey="vitals" label="สัญญาณชีพ Vital Signs" />
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {/* BP */}
+              <div className="flex flex-col gap-1 p-2 rounded-lg bg-[#141313] border border-[#3e3433]">
+                <label className="text-[11px] font-bold text-[#e4beba]">BP (ความดัน)</label>
+                <input
+                  type="text"
+                  value={report.vitals?.bp || ''}
+                  onChange={(e) => updateVitals('bp', e.target.value)}
+                  placeholder="เช่น 120/80"
+                  className="w-full h-8 px-2 rounded bg-[#1c1b1b] border border-[#2b2a29] text-white text-xs font-mono focus:outline-none"
+                />
+                <span className="text-[9px] text-neutral-400">mmHg</span>
+              </div>
+
+              {/* PR */}
+              <div className="flex flex-col gap-1 p-2 rounded-lg bg-[#141313] border border-[#3e3433]">
+                <label className="text-[11px] font-bold text-[#e4beba]">PR (ชีพจร)</label>
+                <input
+                  type="text"
+                  value={report.vitals?.pr || ''}
+                  onChange={(e) => updateVitals('pr', e.target.value)}
+                  placeholder="เช่น 84"
+                  className="w-full h-8 px-2 rounded bg-[#1c1b1b] border border-[#2b2a29] text-white text-xs font-mono focus:outline-none"
+                />
+                <span className="text-[9px] text-neutral-400">bpm</span>
+              </div>
+
+              {/* SpO2 */}
+              <div className="flex flex-col gap-1 p-2 rounded-lg bg-[#141313] border border-[#3e3433]">
+                <label className="text-[11px] font-bold text-[#e4beba]">SpO2 (ออกซิเจน)</label>
+                <input
+                  type="text"
+                  value={report.vitals?.spo2 || ''}
+                  onChange={(e) => updateVitals('spo2', e.target.value)}
+                  placeholder="เช่น 98"
+                  className="w-full h-8 px-2 rounded bg-[#1c1b1b] border border-[#2b2a29] text-white text-xs font-mono focus:outline-none"
+                />
+                <span className="text-[9px] text-neutral-400">% in room air</span>
+              </div>
+
+              {/* Temp */}
+              <div className="flex flex-col gap-1 p-2 rounded-lg bg-[#141313] border border-[#3e3433]">
+                <label className="text-[11px] font-bold text-[#e4beba]">Temp (อุณหภูมิ)</label>
+                <input
+                  type="text"
+                  value={report.vitals?.temp || ''}
+                  onChange={(e) => updateVitals('temp', e.target.value)}
+                  placeholder="เช่น 36.8"
+                  className="w-full h-8 px-2 rounded bg-[#1c1b1b] border border-[#2b2a29] text-white text-xs font-mono focus:outline-none"
+                />
+                <span className="text-[9px] text-neutral-400">°C</span>
+              </div>
+            </div>
+
+            {/* Extra vitals: GCS & DTX */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+              <div className="flex flex-col gap-1">
+                <label className="text-[11px] font-medium text-[#e4beba]">
+                  GCS (ระดับความรู้สึกตัว)
+                </label>
+                <input
+                  type="text"
+                  value={report.vitals?.gcs || ''}
+                  onChange={(e) => updateVitals('gcs', e.target.value)}
+                  placeholder="เช่น E4V5M6 (15)"
+                  className="w-full h-8 px-2.5 rounded bg-[#141313] border border-[#3e3433] text-white text-xs font-mono focus:outline-none"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label className="text-[11px] font-medium text-[#e4beba]">
+                  DTX (ระดับน้ำตาลปลายนิ้ว)
+                </label>
+                <input
+                  type="text"
+                  value={report.vitals?.dtx || ''}
+                  onChange={(e) => updateVitals('dtx', e.target.value)}
+                  placeholder="เช่น 110 mg/dL"
+                  className="w-full h-8 px-2.5 rounded bg-[#141313] border border-[#3e3433] text-white text-xs font-mono focus:outline-none"
+                />
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* CARD 6: โรงพยาบาลปลายทาง, สถานีตำรวจ, เจ้าหน้าที่ & หมายเหตุ */}
+      <div className="rounded-xl bg-[#191415] border border-[#361a1d] shadow-md overflow-hidden">
+        <div
+          onClick={() => toggleAccordion('secDestination')}
+          className="px-4 py-3 bg-[#221315] border-b border-[#361a1d] flex items-center justify-between cursor-pointer select-none"
+        >
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-[#ff5451] text-[20px]">
+              local_hospital
+            </span>
+            <span className="font-headline-md text-sm font-bold text-white">
+              ส่วนที่ 6: รพ.ปลายทาง, สภ., จนท.ปฏิบัติการ & หมายเหตุ
+            </span>
+          </div>
+          <span className="material-symbols-outlined text-[#e4beba] text-[20px]">
+            {collapsed.secDestination ? 'expand_more' : 'expand_less'}
+          </span>
+        </div>
+
+        {!collapsed.secDestination && (
+          <div className="p-4 space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+              <RenderVisibilityToggle sectionKey="hospital" label="รพ.ปลายทาง" />
+              <RenderVisibilityToggle sectionKey="policeStation" label="สถานีตำรวจ" />
+              <RenderVisibilityToggle sectionKey="officerName" label="ร้อยเวร" />
+              <RenderVisibilityToggle sectionKey="crew" label="เจ้าหน้าที่/กำลังพล" />
+              <RenderVisibilityToggle sectionKey="notes" label="รายละเอียดเพิ่มเติม" />
+            </div>
+
+            {/* Destination Hospital */}
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-bold text-[#e4beba]">โรงพยาบาลปลายทาง (นำส่ง)</label>
+              <input
+                type="text"
+                value={report.hospital}
+                onChange={(e) => updateField('hospital', e.target.value)}
+                placeholder="เช่น รพ.เทพรัตน์นครราชสีมา, รพ.มหาราช"
+                className="w-full h-10 px-3 rounded-lg bg-[#141313] border border-[#3e3433] text-white text-xs focus:border-[#ff5451] focus:outline-none"
+              />
+              <div className="flex flex-wrap gap-1 mt-1">
+                {HOSPITALS_KORAT.slice(0, 5).map((h) => (
+                  <button
+                    key={h}
+                    type="button"
+                    onClick={() => updateField('hospital', h)}
+                    className="text-[10px] px-2 py-0.5 rounded bg-[#252323] text-[#e4beba] hover:text-white border border-[#362e2d]"
+                  >
+                    {h}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Police Station & Officer */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-bold text-[#e4beba]">ท้องที่สถานีตำรวจ (สภ.)</label>
+                <input
+                  type="text"
+                  value={report.policeStation}
+                  onChange={(e) => updateField('policeStation', e.target.value)}
+                  placeholder="เช่น สภ.โพธิ์กลาง, สภ.เมืองนครราชสีมา"
+                  className="w-full h-10 px-3 rounded-lg bg-[#141313] border border-[#3e3433] text-white text-xs focus:border-[#ff5451] focus:outline-none"
+                />
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {POLICE_STATIONS.slice(0, 3).map((ps) => (
+                    <button
+                      key={ps}
+                      type="button"
+                      onClick={() => updateField('policeStation', ps)}
+                      className="text-[10px] px-2 py-0.5 rounded bg-[#252323] text-[#e4beba] hover:text-white border border-[#362e2d]"
+                    >
+                      {ps}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-bold text-[#e4beba]">ร้อยเวรเจ้าของคดี / ร้อยเวร ว.30</label>
+                <input
+                  type="text"
+                  value={report.officerName}
+                  onChange={(e) => updateField('officerName', e.target.value)}
+                  placeholder="เช่น ร.ต.อ.สมศักดิ์ หรือ เว้นว่าง"
+                  className="w-full h-10 px-3 rounded-lg bg-[#141313] border border-[#3e3433] text-white text-xs focus:border-[#ff5451] focus:outline-none"
+                />
+              </div>
+            </div>
+
+            {/* Crew / Responders */}
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-bold text-[#e4beba]">
+                เจ้าหน้าที่กู้ชีพ-กู้ภัย / กำลังพลปฏิบัติหน้าที่ ว.4
+              </label>
+              <input
+                type="text"
+                value={report.crew}
+                onChange={(e) => updateField('crew', e.target.value)}
+                placeholder="เช่น พบ.32, พบ.34, ข้างสภ.220"
+                className="w-full h-10 px-3 rounded-lg bg-[#141313] border border-[#3e3433] text-white text-xs focus:border-[#ff5451] focus:outline-none"
+              />
+            </div>
+
+            {/* Notes / First Aid Actions */}
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-bold text-[#e4beba]">
+                การปฐมพยาบาลเบื้องต้น / รายละเอียดการช่วยเหลือเพิ่มเติม
+              </label>
+              <textarea
+                rows={2}
+                value={report.notes}
+                onChange={(e) => updateField('notes', e.target.value)}
+                placeholder="เช่น ดามคอ ดามขา ห้ามเลือด ให้ออกซิเจนแคนนูล่า นำส่งห้องฉุกเฉินเป็นที่เรียบร้อย..."
+                className="w-full p-2.5 rounded-lg bg-[#141313] border border-[#3e3433] text-white text-xs focus:border-[#ff5451] focus:outline-none"
+              />
+              <div className="flex flex-wrap gap-1 mt-1">
+                {[
+                  'ทำแผล ปฐมพยาบาลเบื้องต้น นำส่ง รพ.',
+                  'ดามบล็อคคอ (Hard Collar) ใส่บอร์ด นำส่ง รพ.',
+                  'ให้ออกซิเจนแคนนูล่า 3 LPM นำส่ง รพ.',
+                  'ผู้บาดเจ็บรู้สึกตัวดี ปฏิเสธไป รพ.',
+                ].map((note) => (
+                  <button
+                    key={note}
+                    type="button"
+                    onClick={() => updateField('notes', note)}
+                    className="text-[10px] px-2 py-0.5 rounded bg-[#252323] text-[#e4beba] hover:text-white border border-[#362e2d]"
+                  >
+                    {note}
+                  </button>
+                ))}
               </div>
             </div>
           </div>
